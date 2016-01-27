@@ -232,7 +232,9 @@ class CombineArchive:
 
 
 class ArchiveEntry:
-
+    """
+    represents a single entry in a COMBINE archive
+    """
     def __init__(self, location, format=None, master=False, zipinfo=None, archive=None):
         self.location = location
         self.format = format
