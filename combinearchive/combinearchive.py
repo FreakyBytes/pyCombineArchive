@@ -95,9 +95,10 @@ class CombineArchive:
         root.appendChild(content)
 
         for (location, entry) in self.entries.items():
+            format = check_format(entry.format)
             content = manifest.createElement(self._XML_CONTENT_TAG)
             content.setAttribute(self._XML_CONTENT_LOCATION, entry.location)
-            content.setAttribute(self._XML_CONTENT_FORMAT, entry.format)
+            content.setAttribute(self._XML_CONTENT_FORMAT, format)
             if entry.master:
                 content.setAttribute(self._XML_CONTENT_MASTER, True)
 
@@ -165,6 +166,8 @@ class CombineArchive:
         """
         if not file or not format:
             raise CombineArchiveException('both a file and the corresponding format must be provided')
+        # check format schema
+        format = check_format(format)
 
         # no location provided. Guess it
         if location is None or not location:
@@ -218,6 +221,12 @@ class CombineArchive:
         """
         if not format:
             raise KeyError('You need to provide an format')
+
+        # check format argument against spec
+        try:
+            check_format(format)
+        except CombineArchiveFormatException as e:
+            raise KeyError('{format} is no valid format, according to the OMEX specification. {cause}'.format(format=format, cause=e.message))
 
         if regex is True:
             pattern = re.compile(format)
@@ -286,7 +295,7 @@ def convert_mimetype(mime):
 
 
 __format_url_pattern = re.compile(r'^https?\:\/\/(?:www\.)?(?P<domain>[\w\.\-]+)\/(?P<format>[\w\.\-\/]+)$')
-def check_format(format):
+def check_format(format, convert=True):
     """
     checks if either an indentifiers.org format url or a purl.org format url.
     If format uses old mime type schema, it corrects it to use purl.org via
@@ -299,13 +308,20 @@ def check_format(format):
         if format is unknown or not correct
     """
     # first try to fix old mime type declaration, just in case
-    format = convert_mimetype(format)
+    if convert:
+        format = convert_mimetype(format)
 
     # check if format is url
     match = __format_url_pattern.match(format)
     if not match:
-        # obviously no url -> CombineArchiveFormatException
-        raise CombineArchiveFormatException('format is not a valid url {}'.format(format))
+        # format is not a url
+        if convert is False and __mime_pattern.match(format):
+            # we're not allowed to change the format, so it could be an mime
+            # type
+            return format
+        else:
+            # obviously no url nor mime tpye -> CombineArchiveFormatException
+            raise CombineArchiveFormatException('format is not a valid url {}'.format(format))
     else:
         # url schema seems ok -> check for correct base urls (purl.org or
         # identifiers.org)
