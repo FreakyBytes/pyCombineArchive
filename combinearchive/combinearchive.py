@@ -250,7 +250,12 @@ class ArchiveEntry:
         else:
             raise CombineArchiveException('There is no reference back to the Combine archive')
 
+
 class CombineArchiveException(Exception):
+    pass
+
+
+class CombineArchiveFormatException(CombineArchiveException):
     pass
 
 
@@ -264,3 +269,51 @@ def clean_pathname(path):
         path = path[1:]
 
     return path
+
+
+__mime_pattern = re.compile(r'^([a-zA-Z0-9\+]+)/([a-zA-Z0-9\+]+)$')
+__purl_mime_base = 'http://purl.org/NET/mediatypes/{ctype}/{format}'
+def convert_mimetype(mime):
+    """
+    dedects and automatically converts mime-type like format specifications
+    """
+    match = __mime_pattern.match(mime)
+    if match:
+        # mime is in old mime type format -> put it into purl.org url
+        mime = __purl_mime_base.format(ctype=match.group(1), format=match.group(2))
+
+    return mime
+
+
+__format_url_pattern = re.compile(r'^https?\:\/\/(?:www\.)?(?P<domain>[\w\.\-]+)\/(?P<format>[\w\.\-\/]+)$')
+def check_format(format):
+    """
+    checks if either an indentifiers.org format url or a purl.org format url.
+    If format uses old mime type schema, it corrects it to use purl.org via
+    convert_mimetype()
+
+    Returns:
+        format
+
+    Raises CombineArchiveFormatException:
+        if format is unknown or not correct
+    """
+    # first try to fix old mime type declaration, just in case
+    format = convert_mimetype(format)
+
+    # check if format is url
+    match = __format_url_pattern.match(format)
+    if not match:
+        # obviously no url -> CombineArchiveFormatException
+        raise CombineArchiveFormatException('format is not a valid url {}'.format(format))
+    else:
+        # url schema seems ok -> check for correct base urls (purl.org or
+        # identifiers.org)
+        domain = match.group('domain')
+        if not domain == 'purl.org' and not domain == 'identifiers.org':
+            # unknown format domain -> CombineArchiveFormatException
+            raise CombineArchiveFormatException('{domain} is an unknown format domain. Just purl.org and identifiers.org are allowed at the moment'.format(domain=domain))
+
+    # everything seems to be alright
+    # return format
+    return format
