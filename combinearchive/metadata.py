@@ -1,7 +1,8 @@
 """
 classes representing meta data used in COMBINE Archives, such as the OMEX meta data
 """
-
+import xml.dom.minidom as minidom
+import datetime.datetime as datetime
 
 class MetaDataHolder:
     """
@@ -28,6 +29,35 @@ class MetaDataHolder:
         meta.set_about(self, fragment)
         # add it to the list
         self.description.append(meta)
+
+
+class Namespace:
+    """
+    class holding constants for the XML namespaces
+    """
+    DC          = 'dcterms'
+    DC_URI      = 'http://purl.org/dc/terms/'
+    VCARD       = 'vCard'
+    VCARD_URI   = 'http://www.w3.org/2006/vcard/ns#'
+    BQMODEL     = 'bqmodel'
+    BQMODEL_URI = 'http://biomodels.net/model-qualifiers/'
+    RDF         = 'rdf'
+    RDF_URI     = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
+
+    class dc_terms:
+        description = 'description'
+        creator     = 'creator'
+        created     = 'created'
+        modified    = 'modified'
+        w3cdtf      = 'W3CDTF'
+        w3cdtf_dateformat = '%Y-%m-%dT%H:%M:%SZ'
+
+
+    class vcard_terms:
+        family_name         = 'family-name'
+        given_name          = 'given-name'
+        email               = 'email'
+        organization_name   = 'organization-name'
 
 
 class MetaDataObject:
@@ -62,6 +92,15 @@ class MetaDataObject:
         """
         raise NotImplemented()
 
+    def _rebuild_xml(self):
+        """
+        rebuilds the xml element so it can be stored again into the RDF file
+
+        Returns:
+            the xml_element
+        """
+        raise NotImplemented()
+
 
 class DefaultMetaDataObject(MetaDataObject):
     """
@@ -75,6 +114,9 @@ class DefaultMetaDataObject(MetaDataObject):
     def _try_parse(self):
         pass
 
+    def _rebuild_xml(self):
+        return self._xml_element
+
 
 class OmexMetaDataObject(MetaDataObject):
     """
@@ -85,11 +127,125 @@ class OmexMetaDataObject(MetaDataObject):
     def __init__(self, xml_element):
         super(OmexMetaDataObject, self).__init__(self, xml_element)
 
-        self.created = None
+        self.created = datetime.now()
         self.creator = list()
         self.modified = list()
         self.description = None
 
     def _try_parse(self):
+        try:
+            # getting the dcterms description
+            desc_elems = self._xml_element.getElementsByTagNameNS(Namespace.DC_URI, Namespace.dc_terms.description)
+            if len(desc_elems) > 0:
+                # self.description = __get_text_from_elem(desc_elems[0])
+                # just format as xml, in case there are any HTML tag included
+                self.description = desc_elems[0].toxml()
+
+            # parsing the date of creation
+            created_elems = self._xml_element.getElementsByTagNameNS(Namespace.DC_URI, Namespace.dc_terms.created)
+            if len(created_elems) > 0:
+                date_str = __get_text_from_elem(created_elems.getElementsByTagNameNS(Namespace.DC_URI, Namespace.dc_terms.w3cdtf)[0])
+                self.created = self._parse_date(date_str)
+
+            # parsing the creator VCard
+            creator_elems = self._xml_element.getElementsByTagNameNS(Namespace.DC_URI, Namespace.dc_terms.creator)
+            for creator in creator_elems:
+                self.creator.append( VCard.parse_xml(creator) )
+
+            # parsing all modification dates with nested W3CDFT date declaration
+            modified_elems = self._xml_element.getElementsByTagNameNS(Namespace.DC_URI, Namespace.dc_terms.modified)
+            for mod in modified_elems:
+                date_str = __get_text_from_elem(mod.getElementsByTagNameNS(Namespace.DC_URI, Namespace.dc_terms.w3cdtf))
+                self.modified.append( self._parse_date(date_str) )
+
+        except :
+            raise ValueError('an error occured, while parsing omex meta data')
         # TODO
-        pass
+
+    def _rebuild_xml(self):
+        # TODO
+        return self._xml_element
+
+    def _parse_date(self, str_datetime):
+        """
+        parses the W3CDTF time format
+
+        Returns:
+            datetime object
+
+        Raises ValueError:
+            in case the date cannot be parsed
+
+        """
+        return datetime.strptime(str_datetime, Namespace.dc_terms.w3cdtf_dateformat)
+
+
+class VCard:
+
+    def __init__(self, family_name=None, given_name=None, email=None, organization=None):
+        self.family_name    = family_name
+        self.given_name     = given_name
+        self.email          = email
+        self.organization   = organization
+
+    @staticmethod
+    def parse_xml(xml_element):
+        # generate new VCard object
+        vcard = VCard()
+
+        # parse family name
+        fn_elems = xml_element.getElementsByTagNameNS(Namespace.VCARD_URI, Namespace.vcard_terms.family_name)
+        if len(fn_elems) > 0:
+            vcard.family_name = __get_text_from_elem(fn_elems[0])
+
+        # parse given name
+        gn_elems = xml_element.getElementsByTagNameNS(Namespace.VCARD_URI, Namespace.vcard_terms.given_name)
+        if len(gn_elems) > 0:
+            vcard.given_name = __get_text_from_elem(gn_elems[0])
+
+        # parse email
+        em_elems = xml_element.getElementsByTagNameNS(Namespace.VCARD_URI, Namespace.vcard_terms.email)
+        if len(em_elems) > 0:
+            vcard.email = __get_text_from_elem(em_elems[0])
+
+        # parse organization name
+        on_elems = xml_element.getElementsByTagNameNS(Namespace.VCARD_URI, Namespace.vcard_terms.organization_name)
+        if len(on_elems) > 0:
+            vcard.organization = __get_text_from_elem(on_elems[0])
+
+        # return parsed object
+        return vcard
+
+    def build_xml(self):
+        # generate new xml element
+        # (vcards are always housed in a dcterms:creator elem)
+        elem = minidom.createElementNS(Namespace.DC_URI, Namespace.dc_terms.creator)
+
+        # add family name
+        fn_elem = elem.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.family_name)
+        fn_elem.appendChild(elem.createTextNode(self.family_name))
+        elem.appendChild(fn_elem)
+
+        # add given name
+        gn_elem = elem.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.given_name)
+        gn_elem.appendChild(elem.createTextNode(self.given_name))
+        elem.appendChild(gn_elem)
+
+        # add email
+        em_elem = elem.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.email)
+        em_elem.appendChild(elem.createTextNode(self.email))
+        elem.appendChild(em_elem)
+
+        # add oragnization
+        on_elem = elem.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.organization_name)
+        on_elem.appendChild(elem.createTextNode(self.organization))
+        elem.appendChild(on_elem)
+
+        return elem
+
+
+def __get_text_from_elem(xml_element):
+    return ' '.join(t.nodeValue for t in xml_element.childNodes if t.nodeType == t.TEXT_NODE)
+
+
+
