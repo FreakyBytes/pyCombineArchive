@@ -23,6 +23,7 @@ class CombineArchive(metadata.MetaDataHolder):
     _XML_CONTENT_FORMAT = 'format'
     _XML_CONTENT_MASTER = 'master'
     _XML_CONTENT_ARCHIVE_TYPE = 'http://identifiers.org/combine.specifications/omex'
+    _XML_CONTENT_METADATA_TYPE = 'http://identifiers.org/combine.specifications/omex-metadata'
 
     def __init__(self, archive):
         super(CombineArchive, self).__init__(self)
@@ -75,6 +76,31 @@ class CombineArchive(metadata.MetaDataHolder):
             self.entries[location] = archive_entry
 
     def _read_metadata(self):
+
+        # go over all possible metdata files
+        for meta_file in self.filter_format(self._XML_CONTENT_METADATA_TYPE):
+            # parse the xml
+            meta = minidom.parseString( meta_file.read() )
+            # find every rdf:Description
+            for description in meta.getElementByTagNameNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.description):
+                about_str = description.getAttributeNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.description)
+                if about_str == '.' or about_str == '/':
+                    # meta data is about the archive (root element)
+                    about = self
+                else:
+                    # meta data is about normal file
+                    about = self.get_entry(about_str)
+
+                # start parsing
+                try:
+                    data = metadata.OmexMetaDataObject(description)._try_parse()
+                except:
+                    data = metadata.DefaultMetaDataObject(description)._try_parse()
+
+                # TODO parse fragment
+                about.add_description(data)
+
+
         pass
 
     def _write_manifest(self, zip=None):

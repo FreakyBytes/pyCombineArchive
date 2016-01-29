@@ -47,7 +47,7 @@ class Namespace:
     RDF         = 'rdf'
     RDF_URI     = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
 
-    class rdf_term_terms:
+    class rdf_terms:
         description = 'Description'
         about       = 'about'
 
@@ -138,7 +138,7 @@ class DefaultMetaDataObject(MetaDataObject):
         super(DefaultMetaDataObject, self).__init__(self, xml_element)
 
     def _try_parse(self):
-        pass
+        return self
 
     def _rebuild_xml(self):
         return self._xml_element
@@ -186,6 +186,8 @@ class OmexMetaDataObject(MetaDataObject):
 
         except BaseException as e :
             raise ValueError('an error occured, while parsing omex meta data {}'.format(e.message))
+        else:
+            return self
 
     def _rebuild_xml(self):
         # TODO
