@@ -4,9 +4,10 @@ import tempfile
 import re
 import zipfile
 import xml.dom.minidom as minidom
+import metadata
 
 
-class CombineArchive:
+class CombineArchive(metadata.MetaDataHolder):
     """
     base class for reading, creating and modifying COMBINE Archives
     """
@@ -24,6 +25,7 @@ class CombineArchive:
     _XML_CONTENT_ARCHIVE_TYPE = 'http://identifiers.org/combine.specifications/omex'
 
     def __init__(self, archive):
+        super(CombineArchive, self).__init__(self)
         self._archive = archive
         self._zip = zipfile.ZipFile(archive, mode='a')
         self.entries = dict()
@@ -240,11 +242,12 @@ class CombineArchive:
                 yield entry
 
 
-class ArchiveEntry:
+class ArchiveEntry(metadata.MetaDataHolder):
     """
     represents a single entry in a COMBINE archive
     """
     def __init__(self, location, format=None, master=False, zipinfo=None, archive=None):
+        super(ArchiveEntry, self).__init__(self)
         self.location = location
         self.format = format
         self.master = master
