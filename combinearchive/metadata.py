@@ -4,6 +4,9 @@ classes representing meta data used in COMBINE Archives, such as the OMEX meta d
 import xml.dom.minidom as minidom
 import datetime.datetime as datetime
 
+import combinearchive as combinearchive
+
+
 class MetaDataHolder:
     """
     Mixin for objects, which can contain/be described by meta data
@@ -44,6 +47,10 @@ class Namespace:
     RDF         = 'rdf'
     RDF_URI     = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
 
+    class rdf_term_terms:
+        description = 'Description'
+        about       = 'about'
+
     class dc_terms:
         description = 'description'
         creator     = 'creator'
@@ -51,7 +58,6 @@ class Namespace:
         modified    = 'modified'
         w3cdtf      = 'W3CDTF'
         w3cdtf_dateformat = '%Y-%m-%dT%H:%M:%SZ'
-
 
     class vcard_terms:
         family_name         = 'family-name'
@@ -85,6 +91,26 @@ class MetaDataObject:
         # set according fields
         self.about = about
         self.fragment = fragment
+
+    def _build_desc_elem(self):
+        """
+        constructs the surrounding rdf:description element and returns it
+        useful for _rebuild_xml()
+        """
+        elem = minidom.createElementNS(Namespace.RDF_URI, Namespace.rdf_terms.description)
+        if isinstance(combinearchive.CombineArchive, self.about):
+            # meta data is about the archive itself
+            about_url = '.'
+        elif isinstance(combinearchive.ArchiveEntry, self.about):
+            # meta data is about a normal archive entry
+            about_url = self.about.location
+
+        # add fragment
+        if self.fragment:
+            about_url = '{loc}#{frag}'.format(loc=about_url, frag=self.fragment)
+
+        elem.setAttributeNS(Namespace.RDF_URI, Namespace.rdf_terms.about, about_url)
+        return elem
 
     def _try_parse(self):
         """
@@ -158,12 +184,39 @@ class OmexMetaDataObject(MetaDataObject):
                 date_str = __get_text_from_elem(mod.getElementsByTagNameNS(Namespace.DC_URI, Namespace.dc_terms.w3cdtf))
                 self.modified.append( self._parse_date(date_str) )
 
-        except :
-            raise ValueError('an error occured, while parsing omex meta data')
-        # TODO
+        except BaseException as e :
+            raise ValueError('an error occured, while parsing omex meta data {}'.format(e.message))
 
     def _rebuild_xml(self):
         # TODO
+        # builds top-level rdf:Description element
+        elem = self._build_desc_elem()
+
+        # add description
+        desc_elem = elem.createElementNS(Namespace.VCARD_URI, Namespace.dc_terms.description)
+        desc_elem.appendChild( elem.createTextNode(self.description) )
+        elem.appendChild(desc_elem)
+
+        # add date of creation
+        created_elem = elem.createElementNS(Namespace.DC_URI, Namespace.dc_terms.created)
+        w3cdtf_elem = elem.createElementNS(Namespace.DC_URI, Namespace.dc_terms.w3cdtf)
+        w3cdtf_elem.appendChild( elem.createTextNode(self.created.strftime(Namespace.dc_terms.w3cdtf_dateformat)) )
+        created_elem.appendChild(w3cdtf_elem)
+        elem.appendChild(created_elem)
+
+        # add all modification dates
+        for mod_date in self.modified:
+            modified_elem = elem.createElementNS(Namespace.DC_URI, Namespace.dc_terms.modified)
+            w3cdtf_elem = elem.createElementNS(Namespace.DC_URI, Namespace.dc_terms.w3cdtf)
+            w3cdtf_elem.appendChild( elem.createTextNode(mod_date.strftime(Namespace.dc_terms.w3cdtf_dateformat)) )
+            modified_elem.appendChild(w3cdtf_elem)
+            elem.appendChild(modified_elem)
+
+        # add all VCards
+        for vcard in self.creator:
+            creator_elem = vcard.build_xml()
+            elem.appendChild(creator_elem)
+
         return self._xml_element
 
     def _parse_date(self, str_datetime):
@@ -245,7 +298,7 @@ class VCard:
 
 
 def __get_text_from_elem(xml_element):
+    """
+    gets all textNodes under the given element as String
+    """
     return ' '.join(t.nodeValue for t in xml_element.childNodes if t.nodeType == t.TEXT_NODE)
-
-
-
