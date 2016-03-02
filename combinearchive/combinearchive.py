@@ -14,6 +14,8 @@ class CombineArchive(metadata.MetaDataHolder):
     # location of manifest and metadata
     MANIFEST_LOCATION = 'manifest.xml'
     METADATA_LOCATION = 'metadata.rdf'
+    # paths used in the manifest to assign meta data to the archive itself
+    ARCHIVE_REFERENCE = ('.', '/')
 
     # XML names
     _XML_ROOT_ELEM = 'omexManifest'
@@ -26,7 +28,7 @@ class CombineArchive(metadata.MetaDataHolder):
     _XML_CONTENT_METADATA_TYPE = 'http://identifiers.org/combine.specifications/omex-metadata'
 
     def __init__(self, archive):
-        super(CombineArchive, self).__init__(self)
+        super(CombineArchive, self).__init__()
         self._archive = archive
         self._zip = zipfile.ZipFile(archive, mode='a')
         self.entries = dict()
@@ -66,11 +68,12 @@ class CombineArchive(metadata.MetaDataHolder):
             # clean location
             location = clean_pathname(location)
 
-            # check if file is in zip
-            try:
-                self._zip.getinfo(location)
-            except KeyError:
-                raise CombineArchiveException("{location} is specified by the manifest, but not contained by the ZIP file".format(location=location))
+            # check if file is in zip, if it's not the root element
+            if location not in self.ARCHIVE_REFERENCE:
+                try:
+                    self._zip.getinfo(location)
+                except KeyError:
+                    raise CombineArchiveException("{location} is specified by the manifest, but not contained by the ZIP file".format(location=location))
 
             archive_entry = ArchiveEntry(location, format=format, master=master, archive=self)
             self.entries[location] = archive_entry
@@ -84,7 +87,7 @@ class CombineArchive(metadata.MetaDataHolder):
             # find every rdf:Description
             for description in meta.getElementByTagNameNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.description):
                 about_str = description.getAttributeNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.description)
-                if about_str == '.' or about_str == '/':
+                if about_str in self.ARCHIVE_REFERENCE:
                     # meta data is about the archive (root element)
                     about = self
                 else:
@@ -273,7 +276,7 @@ class ArchiveEntry(metadata.MetaDataHolder):
     represents a single entry in a COMBINE archive
     """
     def __init__(self, location, format=None, master=False, zipinfo=None, archive=None):
-        super(ArchiveEntry, self).__init__(self)
+        super(ArchiveEntry, self).__init__()
         self.location = location
         self.format = format
         self.master = master

@@ -2,12 +2,12 @@
 classes representing meta data used in COMBINE Archives, such as the OMEX meta data
 """
 import xml.dom.minidom as minidom
-import datetime.datetime as datetime
+from datetime import datetime
 
 import combinearchive as combinearchive
 
 
-class MetaDataHolder:
+class MetaDataHolder(object):
     """
     Mixin for objects, which can contain/be described by meta data
     """
@@ -34,7 +34,7 @@ class MetaDataHolder:
         self.description.append(meta)
 
 
-class Namespace:
+class Namespace(object):
     """
     class holding constants for the XML namespaces
     """
@@ -66,7 +66,7 @@ class Namespace:
         organization_name   = 'organization-name'
 
 
-class MetaDataObject:
+class MetaDataObject(object):
     """
     abstract base class for all meta data utilized in COMBINE archives
     """
@@ -235,7 +235,7 @@ class OmexMetaDataObject(MetaDataObject):
         return datetime.strptime(str_datetime, Namespace.dc_terms.w3cdtf_dateformat)
 
 
-class VCard:
+class VCard(object):
 
     def __init__(self, family_name=None, given_name=None, email=None, organization=None):
         self.family_name    = family_name
