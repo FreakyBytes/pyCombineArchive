@@ -135,7 +135,7 @@ class DefaultMetaDataObject(MetaDataObject):
     """
 
     def __init__(self, xml_element):
-        super(DefaultMetaDataObject, self).__init__(self, xml_element)
+        super(DefaultMetaDataObject, self).__init__(xml_element)
 
     def _try_parse(self):
         return self
@@ -151,7 +151,7 @@ class OmexMetaDataObject(MetaDataObject):
     """
 
     def __init__(self, xml_element):
-        super(OmexMetaDataObject, self).__init__(self, xml_element)
+        super(OmexMetaDataObject, self).__init__(xml_element)
 
         self.created = datetime.now()
         self.creator = list()

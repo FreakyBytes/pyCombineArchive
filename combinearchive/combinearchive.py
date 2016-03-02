@@ -85,7 +85,7 @@ class CombineArchive(metadata.MetaDataHolder):
             # parse the xml
             meta = minidom.parseString( meta_file.read() )
             # find every rdf:Description
-            for description in meta.getElementByTagNameNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.description):
+            for description in meta.getElementsByTagNameNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.description):
                 about_str = description.getAttributeNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.description)
                 if about_str in self.ARCHIVE_REFERENCE:
                     # meta data is about the archive (root element)
