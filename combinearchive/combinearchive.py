@@ -167,7 +167,9 @@ class CombineArchive(metadata.MetaDataHolder):
 
         # add all entries
         for (location, entry) in self.entries.items():
-            #entry = self.entries[location]
+            if location in self.ARCHIVE_REFERENCE:
+                continue  # skip root entry
+
             if entry.zipinfo is None:
                 entry.zipinfo = self._zip.getinfo(location)
 
@@ -207,7 +209,7 @@ class CombineArchive(metadata.MetaDataHolder):
         # clean location
         location = clean_pathname(location)
 
-        if location == self.MANIFEST_LOCATION or location == self.METADATA_LOCATION:
+        if location == self.MANIFEST_LOCATION or location == self.METADATA_LOCATION or location in self.ARCHIVE_REFERENCE:
             raise CombineArchiveException('it is not allowed to name a file {loc}'.format(loc=location))
 
         if location in self._zip.namelist():
@@ -326,7 +328,7 @@ def convert_mimetype(mime):
     return mime
 
 
-__format_url_pattern = re.compile(r'^https?\:\/\/(?:www\.)?(?P<domain>[\w\.\-]+)\/(?P<format>[\w\.\-\/]+)$')
+__format_url_pattern = re.compile(r'^https?\:\/\/(?:www\.)?(?P<domain>[\w\.\-]+)\/(?P<format>[\w\.\-+\/]+)$')
 def check_format(format, convert=True):
     """
     checks if either an indentifiers.org format url or a purl.org format url.

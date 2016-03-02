@@ -29,7 +29,7 @@ class MetaDataHolder(object):
             raise TypeError('provided meta data does not inherit from MetaDataObject')
 
         # set information to MetaDataObject
-        meta.set_about(self, fragment)
+        meta.set_about(self, fragment=fragment)
         # add it to the list
         self.description.append(meta)
 
@@ -71,7 +71,7 @@ class MetaDataObject(object):
     abstract base class for all meta data utilized in COMBINE archives
     """
 
-    def __init__(self, xml_element):
+    def __init__(self, xml_element=None):
         """ XML element representing the raw meta data"""
         self._xml_element = xml_element
         """ reference to the object, which this meta data is about. Should have the MetaDataHolder mixin"""
@@ -79,18 +79,26 @@ class MetaDataObject(object):
         """ fragment/part of the referenced object, which is described by this meta data"""
         self.fragment = None
 
-        # start parsing
-        self._try_parse()
+        if xml_element is not None:
+            # start parsing
+            self._try_parse()
 
-    def set_about(self, about, fragment=None):
+    def set_about(self, about, fragment=None, add_to_target=False):
         """
         """
+        if about is None:
+            raise ValueError('about is not supposed to be None')
+
         if not isinstance(about, MetaDataHolder):
             raise TypeError('provided about object does not inherit from MetaDataHolder')
 
         # set according fields
         self.about = about
         self.fragment = fragment
+
+        # auto wire, if wished
+        if add_to_target:
+            self.about.add_description(self, fragment=None)
 
     def _build_desc_elem(self):
         """
@@ -150,8 +158,8 @@ class OmexMetaDataObject(MetaDataObject):
     COMBINE Archive specification
     """
 
-    def __init__(self, xml_element):
-        super(OmexMetaDataObject, self).__init__(xml_element)
+    def __init__(self, xml_element=None):
+        super(OmexMetaDataObject, self).__init__(xml_element=xml_element)
 
         self.created = datetime.now()
         self.creator = list()
