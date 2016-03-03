@@ -100,12 +100,42 @@ class AddDeleteTest(BaseReadTest):
         self.close_archive()
 
 
+class FormatConversionTest(unittest.TestCase):
+
+    def test_formatcheck(self):
+
+        with self.assertRaises(combinearchive.CombineArchiveFormatException):
+            combinearchive.check_format('foobar', convert=False)                        # no mime type or url
+        with self.assertRaises(combinearchive.CombineArchiveFormatException):
+            combinearchive.check_format('ftp://purl.org/mediatypes/application/pdf')    # not a valid url schema (only https? allowed)
+
+        # check for identifiers urls
+        self.assertEqual(combinearchive.check_format('http://identifiers.org/combine.specifications/cellml'),
+                         'http://identifiers.org/combine.specifications/cellml',
+                         'check_format alternated identifiers.org link')
+
+        self.assertEqual(combinearchive.check_format('http://identifiers.org/combine.specifications/sbml.level-3.version-1'),
+                         'http://identifiers.org/combine.specifications/sbml.level-3.version-1',
+                         'check_format alternated identifiers.org link')
+
+    def test_conversion(self):
+
+        # no conversion, but check of mime type
+        self.assertEqual(combinearchive.check_format('application/pdf', convert=False),
+                         'application/pdf')
+
+        # conversion to purl.org url
+        self.assertEqual(combinearchive.check_format('application/pdf', convert=True),
+                         'http://purl.org/NET/mediatypes/application/pdf')
+
+
 def do_tests():
     """
     run all tests in this module
     """
     test_support.run_unittest(ReadTest,
-                              AddDeleteTest)
+                              AddDeleteTest,
+                              FormatConversionTest)
 
 if __name__ == '__main__':
     do_tests()
