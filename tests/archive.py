@@ -15,7 +15,7 @@ class BaseReadTest(unittest.TestCase):
     """
     abstract base class for all tests involve only reading from COMBINE archives
     """
-    TEST_ARCHIVE = 'test.omex'
+    TEST_ARCHIVE = None
 
     def setUp(self):
         # first copy test archive into a temp location, so validation data does
@@ -53,7 +53,7 @@ class BaseReadTest(unittest.TestCase):
         return name
 
 class ReadTest(BaseReadTest):
-    TEST_ARCHIVE = '../../test/all-singing-all-dancing.omex'
+    TEST_ARCHIVE = 'data/all-singing-all-dancing.omex'
 
     def test_get_entry(self):
         self.open_archive()
@@ -78,7 +78,7 @@ class ReadTest(BaseReadTest):
 
 
 class AddDeleteTest(BaseReadTest):
-    TEST_ARCHIVE = '../../test/all-singing-all-dancing.omex'
+    TEST_ARCHIVE = 'data/all-singing-all-dancing.omex'
 
     def test_add(self):
         self.open_archive()
