@@ -1,6 +1,7 @@
 pyCombineArchive
 ================
 *A pure python library to create, modify and read [COMBINE Archives](http://co.mbine.org/documents/archive)*
+
 [![Coverage Status](https://coveralls.io/repos/github/FreakyBytes/pyCombineArchive/badge.svg?branch=master)](https://coveralls.io/github/FreakyBytes/pyCombineArchive?branch=master)
 
 **Currently under heavy development** I'm still looking forward to comments, bug reports or feature requests at any time.
