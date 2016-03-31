@@ -5,3 +5,6 @@
 
 .ropeproject/
 .idea/
+
+.coverage
+htmlcov/
