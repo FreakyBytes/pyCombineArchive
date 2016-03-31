@@ -53,7 +53,7 @@ class BaseReadTest(unittest.TestCase):
         return name
 
 class ReadTest(BaseReadTest):
-    TEST_ARCHIVE = 'data/all-singing-all-dancing.omex'
+    TEST_ARCHIVE = 'tests/data/all-singing-all-dancing.omex'
 
     def test_get_entry(self):
         self.open_archive()
@@ -78,7 +78,7 @@ class ReadTest(BaseReadTest):
 
 
 class AddDeleteTest(BaseReadTest):
-    TEST_ARCHIVE = 'data/all-singing-all-dancing.omex'
+    TEST_ARCHIVE = 'tests/data/all-singing-all-dancing.omex'
 
     def test_add(self):
         self.open_archive()
