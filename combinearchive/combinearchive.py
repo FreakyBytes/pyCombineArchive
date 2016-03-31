@@ -75,13 +75,14 @@ class CombineArchive(metadata.MetaDataHolder):
             location = clean_pathname(location)
 
             # check if file is in zip, if it's not the root element
+            zipinfo = None
             if location not in self.ARCHIVE_REFERENCE:
                 try:
-                    self._zip.getinfo(location)
+                    zipinfo = self._zip.getinfo(location)
                 except KeyError:
                     raise CombineArchiveException("{location} is specified by the manifest, but not contained by the ZIP file".format(location=location))
 
-            archive_entry = ArchiveEntry(location, format=format, master=master, archive=self)
+            archive_entry = ArchiveEntry(location, format=format, master=master, archive=self, zipinfo=zipinfo)
             self.entries[location] = archive_entry
 
     def _read_metadata(self):
@@ -190,8 +191,9 @@ class CombineArchive(metadata.MetaDataHolder):
 
         # add all entries
         for (location, entry) in self.entries.items():
-            if location in self.ARCHIVE_REFERENCE:
-                continue  # skip root entry
+            if location in self.ARCHIVE_REFERENCE or location == self.MANIFEST_LOCATION or location == self.METADATA_LOCATION:
+                # skip root entry (representing the archive itself) and the two main entries (manifest and metadata)
+                continue
 
             if entry.zipinfo is None:
                 entry.zipinfo = self._zip.getinfo(location)
@@ -202,7 +204,6 @@ class CombineArchive(metadata.MetaDataHolder):
         # close both zip files
         new_zip.close()
         self._zip.close()
-        new_file.close()
 
         # remove old file and move new one
         os.remove(self._archive)
@@ -330,7 +331,7 @@ def clean_pathname(path):
     basically removes leading slashes, because the python zip does not handle
     them
     """
-    path = os.path.normpath(path)
+    path = os.path.normpath(unicode(path))
     if path[0] == '/':
         path = path[1:]
 
