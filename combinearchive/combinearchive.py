@@ -5,6 +5,12 @@ import re
 import zipfile
 import xml.dom.minidom as minidom
 import metadata
+try:
+    # Python 3
+    from urllib.parse import urlparse, urljoin
+except ImportError:
+    # Python 2
+    from urlparse import urlparse, urljoin
 
 
 class CombineArchive(metadata.MetaDataHolder):
@@ -83,10 +89,13 @@ class CombineArchive(metadata.MetaDataHolder):
         # go over all possible metdata files
         for meta_file in self.filter_format(self._XML_CONTENT_METADATA_TYPE):
             # parse the xml
-            meta = minidom.parseString( meta_file.read() )
+            meta = minidom.parseString(meta_file.read())
             # find every rdf:Description
             for description in meta.getElementsByTagNameNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.description):
-                about_str = description.getAttributeNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.description)
+                about = urlparse(description.getAttributeNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.description))
+                about_str = about.path
+                fragment_str = about.fragment
+
                 if about_str in self.ARCHIVE_REFERENCE:
                     # meta data is about the archive (root element)
                     about = self
@@ -100,11 +109,7 @@ class CombineArchive(metadata.MetaDataHolder):
                 except:
                     data = metadata.DefaultMetaDataObject(description)._try_parse()
 
-                # TODO parse fragment
-                about.add_description(data)
-
-
-        pass
+                about.add_description(data, fragment=fragment_str)
 
     def _write_manifest(self, zip=None):
         """
@@ -140,7 +145,25 @@ class CombineArchive(metadata.MetaDataHolder):
         zip.writestr(self.MANIFEST_LOCATION, xmlstring)
 
     def _write_metadata(self, zip=None):
-        pass
+
+        if zip is None:
+            zip = self._zip
+
+        # create new DOM object for RDF
+        rdf_document = minidom.getDOMImplementation().createDocument(metadata.Namespace.RDF_URI, metadata.Namespace.RDF, None)
+        rdf = rdf_document.documentElement
+        rdf.setAttribute('xmlns', metadata.Namespace.RDF_URI)
+
+        # iterate over all metadata for each entry
+        for (location, entry) in self.entries.items():
+            if not isinstance(entry, metadata.MetaDataHolder):
+                continue
+            for description in entry.description:
+                rdf.appendChild(description._rebuild_xml(rdf_document))
+
+        # write xml to zip
+        xmlstring = rdf_document.toprettyxml()
+        zip.writestr(self.METADATA_LOCATION, xmlstring)
 
     def close(self):
         """

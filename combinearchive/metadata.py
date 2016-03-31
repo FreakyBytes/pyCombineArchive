@@ -3,6 +3,12 @@ classes representing meta data used in COMBINE Archives, such as the OMEX meta d
 """
 import xml.dom.minidom as minidom
 from datetime import datetime
+try:
+    # Python 3
+    from urllib.parse import urlparse, urljoin
+except ImportError:
+    # Python 2
+    from urlparse import urlparse, urljoin
 
 import combinearchive as combinearchive
 
@@ -100,22 +106,22 @@ class MetaDataObject(object):
         if add_to_target:
             self.about.add_description(self, fragment=None)
 
-    def _build_desc_elem(self):
+    def _build_desc_elem(self, document):
         """
         constructs the surrounding rdf:description element and returns it
         useful for _rebuild_xml()
         """
-        elem = minidom.createElementNS(Namespace.RDF_URI, Namespace.rdf_terms.description)
-        if isinstance(combinearchive.CombineArchive, self.about):
+        elem = document.createElementNS(Namespace.RDF_URI, Namespace.rdf_terms.description)
+        if isinstance(self.about, combinearchive.CombineArchive):
             # meta data is about the archive itself
             about_url = '.'
-        elif isinstance(combinearchive.ArchiveEntry, self.about):
+        elif isinstance(self.about, combinearchive.ArchiveEntry):
             # meta data is about a normal archive entry
             about_url = self.about.location
 
         # add fragment
         if self.fragment:
-            about_url = '{loc}#{frag}'.format(loc=about_url, frag=self.fragment)
+            about_url = urljoin(about_url, '#{}'.format(self.fragment))
 
         elem.setAttributeNS(Namespace.RDF_URI, Namespace.rdf_terms.about, about_url)
         return elem
@@ -126,7 +132,7 @@ class MetaDataObject(object):
         """
         raise NotImplemented()
 
-    def _rebuild_xml(self):
+    def _rebuild_xml(self, document):
         """
         rebuilds the xml element so it can be stored again into the RDF file
 
@@ -148,7 +154,7 @@ class DefaultMetaDataObject(MetaDataObject):
     def _try_parse(self):
         return self
 
-    def _rebuild_xml(self):
+    def _rebuild_xml(self, document):
         return self._xml_element
 
 
@@ -197,36 +203,37 @@ class OmexMetaDataObject(MetaDataObject):
         else:
             return self
 
-    def _rebuild_xml(self):
+    def _rebuild_xml(self, document):
         # TODO
         # builds top-level rdf:Description element
-        elem = self._build_desc_elem()
+        elem = self._build_desc_elem(document)
 
         # add description
-        desc_elem = elem.createElementNS(Namespace.VCARD_URI, Namespace.dc_terms.description)
-        desc_elem.appendChild( elem.createTextNode(self.description) )
+        desc_elem = document.createElementNS(Namespace.VCARD_URI, Namespace.dc_terms.description)
+        desc_elem.appendChild(document.createTextNode(self.description))
         elem.appendChild(desc_elem)
 
         # add date of creation
-        created_elem = elem.createElementNS(Namespace.DC_URI, Namespace.dc_terms.created)
-        w3cdtf_elem = elem.createElementNS(Namespace.DC_URI, Namespace.dc_terms.w3cdtf)
-        w3cdtf_elem.appendChild( elem.createTextNode(self.created.strftime(Namespace.dc_terms.w3cdtf_dateformat)) )
+        created_elem = document.createElementNS(Namespace.DC_URI, Namespace.dc_terms.created)
+        w3cdtf_elem = document.createElementNS(Namespace.DC_URI, Namespace.dc_terms.w3cdtf)
+        w3cdtf_elem.appendChild(document.createTextNode(self.created.strftime(Namespace.dc_terms.w3cdtf_dateformat)))
         created_elem.appendChild(w3cdtf_elem)
         elem.appendChild(created_elem)
 
         # add all modification dates
         for mod_date in self.modified:
-            modified_elem = elem.createElementNS(Namespace.DC_URI, Namespace.dc_terms.modified)
-            w3cdtf_elem = elem.createElementNS(Namespace.DC_URI, Namespace.dc_terms.w3cdtf)
-            w3cdtf_elem.appendChild( elem.createTextNode(mod_date.strftime(Namespace.dc_terms.w3cdtf_dateformat)) )
+            modified_elem = document.createElementNS(Namespace.DC_URI, Namespace.dc_terms.modified)
+            w3cdtf_elem = document.createElementNS(Namespace.DC_URI, Namespace.dc_terms.w3cdtf)
+            w3cdtf_elem.appendChild(document.createTextNode(mod_date.strftime(Namespace.dc_terms.w3cdtf_dateformat)))
             modified_elem.appendChild(w3cdtf_elem)
             elem.appendChild(modified_elem)
 
         # add all VCards
         for vcard in self.creator:
-            creator_elem = vcard.build_xml()
+            creator_elem = vcard.build_xml(document)
             elem.appendChild(creator_elem)
 
+        self._xml_element = elem
         return self._xml_element
 
     def _parse_date(self, str_datetime):
@@ -279,29 +286,29 @@ class VCard(object):
         # return parsed object
         return vcard
 
-    def build_xml(self):
+    def build_xml(self, document):
         # generate new xml element
         # (vcards are always housed in a dcterms:creator elem)
-        elem = minidom.createElementNS(Namespace.DC_URI, Namespace.dc_terms.creator)
+        elem = document.createElementNS(Namespace.DC_URI, Namespace.dc_terms.creator)
 
         # add family name
-        fn_elem = elem.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.family_name)
-        fn_elem.appendChild(elem.createTextNode(self.family_name))
+        fn_elem = document.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.family_name)
+        fn_elem.appendChild(document.createTextNode(self.family_name))
         elem.appendChild(fn_elem)
 
         # add given name
-        gn_elem = elem.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.given_name)
-        gn_elem.appendChild(elem.createTextNode(self.given_name))
+        gn_elem = document.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.given_name)
+        gn_elem.appendChild(document.createTextNode(self.given_name))
         elem.appendChild(gn_elem)
 
         # add email
-        em_elem = elem.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.email)
-        em_elem.appendChild(elem.createTextNode(self.email))
+        em_elem = document.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.email)
+        em_elem.appendChild(document.createTextNode(self.email))
         elem.appendChild(em_elem)
 
-        # add oragnization
-        on_elem = elem.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.organization_name)
-        on_elem.appendChild(elem.createTextNode(self.organization))
+        # add organization
+        on_elem = document.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.organization_name)
+        on_elem.appendChild(document.createTextNode(self.organization))
         elem.appendChild(on_elem)
 
         return elem
