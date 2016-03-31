@@ -52,6 +52,7 @@ class BaseReadTest(unittest.TestCase):
 
         return name
 
+
 class ReadTest(BaseReadTest):
     TEST_ARCHIVE = 'tests/data/all-singing-all-dancing.omex'
 
@@ -87,16 +88,13 @@ class AddDeleteTest(BaseReadTest):
         self.assertIsNotNone(entry, 'created entry is None')
 
         meta = metadata.OmexMetaDataObject()
-        meta.creator.append(metadata.VCard(family_name="Peters", given_name="Martin", organization="University of Rostock"))
+        meta.creator.append(metadata.VCard(family_name="Peters", given_name="Martin", organization="University of Rostock", email="mail@mail.org"))
         meta.creator.append(metadata.VCard(family_name="Scharm", given_name="Martin", organization="University of Rostock"))
         meta.modified.append(meta.created)
         meta.description = "This is a Test"
         entry.add_description(meta)
 
         self.carchive.pack()
-
-
-
         self.close_archive()
 
 

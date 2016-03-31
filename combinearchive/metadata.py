@@ -13,6 +13,13 @@ except ImportError:
 import combinearchive as combinearchive
 
 
+def _get_text_from_elem(xml_element):
+    """
+    gets all textNodes under the given element as String
+    """
+    return ' '.join(t.nodeValue for t in xml_element.childNodes if t.nodeType == t.TEXT_NODE)
+
+
 class MetaDataHolder(object):
     """
     Mixin for objects, which can contain/be described by meta data
@@ -56,6 +63,9 @@ class Namespace(object):
     class rdf_terms:
         description = 'Description'
         about       = 'about'
+        parse_type  = 'parseType'
+        bag         = 'Bag'
+        li          = 'li'
 
     class dc_terms:
         description = 'description'
@@ -66,6 +76,7 @@ class Namespace(object):
         w3cdtf_dateformat = '%Y-%m-%dT%H:%M:%SZ'
 
     class vcard_terms:
+        has_name            = 'hasName'
         family_name         = 'family-name'
         given_name          = 'given-name'
         email               = 'email'
@@ -165,12 +176,13 @@ class OmexMetaDataObject(MetaDataObject):
     """
 
     def __init__(self, xml_element=None):
-        super(OmexMetaDataObject, self).__init__(xml_element=xml_element)
 
         self.created = datetime.now()
         self.creator = list()
         self.modified = list()
         self.description = None
+
+        super(OmexMetaDataObject, self).__init__(xml_element=xml_element)
 
     def _try_parse(self):
         try:
@@ -184,7 +196,7 @@ class OmexMetaDataObject(MetaDataObject):
             # parsing the date of creation
             created_elems = self._xml_element.getElementsByTagNameNS(Namespace.DC_URI, Namespace.dc_terms.created)
             if len(created_elems) > 0:
-                date_str = __get_text_from_elem(created_elems.getElementsByTagNameNS(Namespace.DC_URI, Namespace.dc_terms.w3cdtf)[0])
+                date_str = _get_text_from_elem(created_elems[0].getElementsByTagNameNS(Namespace.DC_URI, Namespace.dc_terms.w3cdtf)[0])
                 self.created = self._parse_date(date_str)
 
             # parsing the creator VCard
@@ -195,10 +207,10 @@ class OmexMetaDataObject(MetaDataObject):
             # parsing all modification dates with nested W3CDFT date declaration
             modified_elems = self._xml_element.getElementsByTagNameNS(Namespace.DC_URI, Namespace.dc_terms.modified)
             for mod in modified_elems:
-                date_str = __get_text_from_elem(mod.getElementsByTagNameNS(Namespace.DC_URI, Namespace.dc_terms.w3cdtf))
+                date_str = _get_text_from_elem(mod.getElementsByTagNameNS(Namespace.DC_URI, Namespace.dc_terms.w3cdtf)[0])
                 self.modified.append( self._parse_date(date_str) )
 
-        except BaseException as e :
+        except BaseException as e:
             raise ValueError('an error occured, while parsing omex meta data {}'.format(e.message))
         else:
             return self
@@ -209,16 +221,18 @@ class OmexMetaDataObject(MetaDataObject):
         elem = self._build_desc_elem(document)
 
         # add description
-        desc_elem = document.createElementNS(Namespace.VCARD_URI, Namespace.dc_terms.description)
-        desc_elem.appendChild(document.createTextNode(self.description))
-        elem.appendChild(desc_elem)
+        if self.description and self.description != '':
+            desc_elem = document.createElementNS(Namespace.VCARD_URI, Namespace.dc_terms.description)
+            desc_elem.appendChild(document.createTextNode(self.description))
+            elem.appendChild(desc_elem)
 
         # add date of creation
-        created_elem = document.createElementNS(Namespace.DC_URI, Namespace.dc_terms.created)
-        w3cdtf_elem = document.createElementNS(Namespace.DC_URI, Namespace.dc_terms.w3cdtf)
-        w3cdtf_elem.appendChild(document.createTextNode(self.created.strftime(Namespace.dc_terms.w3cdtf_dateformat)))
-        created_elem.appendChild(w3cdtf_elem)
-        elem.appendChild(created_elem)
+        if self.created:
+            created_elem = document.createElementNS(Namespace.DC_URI, Namespace.dc_terms.created)
+            w3cdtf_elem = document.createElementNS(Namespace.DC_URI, Namespace.dc_terms.w3cdtf)
+            w3cdtf_elem.appendChild(document.createTextNode(self.created.strftime(Namespace.dc_terms.w3cdtf_dateformat)))
+            created_elem.appendChild(w3cdtf_elem)
+            elem.appendChild(created_elem)
 
         # add all modification dates
         for mod_date in self.modified:
@@ -266,22 +280,22 @@ class VCard(object):
         # parse family name
         fn_elems = xml_element.getElementsByTagNameNS(Namespace.VCARD_URI, Namespace.vcard_terms.family_name)
         if len(fn_elems) > 0:
-            vcard.family_name = __get_text_from_elem(fn_elems[0])
+            vcard.family_name = _get_text_from_elem(fn_elems[0])
 
         # parse given name
         gn_elems = xml_element.getElementsByTagNameNS(Namespace.VCARD_URI, Namespace.vcard_terms.given_name)
         if len(gn_elems) > 0:
-            vcard.given_name = __get_text_from_elem(gn_elems[0])
+            vcard.given_name = _get_text_from_elem(gn_elems[0])
 
         # parse email
         em_elems = xml_element.getElementsByTagNameNS(Namespace.VCARD_URI, Namespace.vcard_terms.email)
         if len(em_elems) > 0:
-            vcard.email = __get_text_from_elem(em_elems[0])
+            vcard.email = _get_text_from_elem(em_elems[0])
 
         # parse organization name
         on_elems = xml_element.getElementsByTagNameNS(Namespace.VCARD_URI, Namespace.vcard_terms.organization_name)
         if len(on_elems) > 0:
-            vcard.organization = __get_text_from_elem(on_elems[0])
+            vcard.organization = _get_text_from_elem(on_elems[0])
 
         # return parsed object
         return vcard
@@ -290,32 +304,37 @@ class VCard(object):
         # generate new xml element
         # (vcards are always housed in a dcterms:creator elem)
         elem = document.createElementNS(Namespace.DC_URI, Namespace.dc_terms.creator)
+        elem.setAttributeNS(Namespace.RDF_URI, Namespace.rdf_terms.parse_type, 'Resource')
 
-        # add family name
-        fn_elem = document.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.family_name)
-        fn_elem.appendChild(document.createTextNode(self.family_name))
-        elem.appendChild(fn_elem)
+        # name tag
+        if (self.family_name and self.family_name != '') or (self.given_name and self.given_name != ''):
+            hasname_elem = document.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.has_name)
+            hasname_elem.setAttributeNS(Namespace.RDF_URI, Namespace.rdf_terms.parse_type, 'Resource')
 
-        # add given name
-        gn_elem = document.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.given_name)
-        gn_elem.appendChild(document.createTextNode(self.given_name))
-        elem.appendChild(gn_elem)
+            # add family name
+            if self.family_name and self.family_name != '':
+                fn_elem = document.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.family_name)
+                fn_elem.appendChild(document.createTextNode(self.family_name))
+                hasname_elem.appendChild(fn_elem)
+
+            # add given name
+            if self.given_name and self.given_name != '':
+                gn_elem = document.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.given_name)
+                gn_elem.appendChild(document.createTextNode(self.given_name))
+                hasname_elem.appendChild(gn_elem)
+
+            elem.appendChild(hasname_elem)
 
         # add email
-        em_elem = document.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.email)
-        em_elem.appendChild(document.createTextNode(self.email))
-        elem.appendChild(em_elem)
+        if self.email and self.email != '':
+            em_elem = document.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.email)
+            em_elem.appendChild(document.createTextNode(self.email))
+            elem.appendChild(em_elem)
 
         # add organization
-        on_elem = document.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.organization_name)
-        on_elem.appendChild(document.createTextNode(self.organization))
-        elem.appendChild(on_elem)
+        if self.organization and self.organization != '':
+            on_elem = document.createElementNS(Namespace.VCARD_URI, Namespace.vcard_terms.organization_name)
+            on_elem.appendChild(document.createTextNode(self.organization))
+            elem.appendChild(on_elem)
 
         return elem
-
-
-def __get_text_from_elem(xml_element):
-    """
-    gets all textNodes under the given element as String
-    """
-    return ' '.join(t.nodeValue for t in xml_element.childNodes if t.nodeType == t.TEXT_NODE)

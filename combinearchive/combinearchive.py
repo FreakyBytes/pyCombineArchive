@@ -92,9 +92,9 @@ class CombineArchive(metadata.MetaDataHolder):
             meta = minidom.parseString(meta_file.read())
             # find every rdf:Description
             for description in meta.getElementsByTagNameNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.description):
-                about = urlparse(description.getAttributeNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.description))
-                about_str = about.path
-                fragment_str = about.fragment
+                about_url = urlparse(description.getAttributeNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.about))
+                about_str = about_url.path
+                fragment_str = about_url.fragment
 
                 if about_str in self.ARCHIVE_REFERENCE:
                     # meta data is about the archive (root element)
@@ -105,9 +105,9 @@ class CombineArchive(metadata.MetaDataHolder):
 
                 # start parsing
                 try:
-                    data = metadata.OmexMetaDataObject(description)._try_parse()
-                except:
-                    data = metadata.DefaultMetaDataObject(description)._try_parse()
+                    data = metadata.OmexMetaDataObject(description)
+                except ValueError:
+                    data = metadata.DefaultMetaDataObject(description)
 
                 about.add_description(data, fragment=fragment_str)
 
