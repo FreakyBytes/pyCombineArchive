@@ -79,12 +79,13 @@ class ReadTest(BaseReadTest):
 
 
 class AddDeleteTest(BaseReadTest):
-    TEST_ARCHIVE = 'tests/data/all-singing-all-dancing.omex'
+    TEST_ARCHIVE = None #'tests/data/all-singing-all-dancing.omex'
 
-    def test_add(self):
+    def test_add_delete(self):
         self.open_archive()
+        test_file_name = "test/1.txt"
 
-        entry = self.carchive.add_entry(self.get_random_file(), "text/plain", "test/1.txt")
+        entry = self.carchive.add_entry(self.get_random_file(), "text/plain", test_file_name)
         self.assertIsNotNone(entry, 'created entry is None')
 
         meta = metadata.OmexMetaDataObject()
@@ -93,6 +94,29 @@ class AddDeleteTest(BaseReadTest):
         meta.modified.append(meta.created)
         meta.description = "This is a Test"
         entry.add_description(meta)
+
+        self.carchive.pack()
+        self.carchive.close()
+        self.carchive = combinearchive.CombineArchive(self.archive_location)
+
+        entry = self.carchive.get_entry(test_file_name)
+        self.assertIsNotNone(entry, 'Formerly added entry not found in the archive')
+        desc = entry.description[0]
+
+        # checking meta data
+        self.assertEqual(desc.created, desc.modified[0], 'create and modified date in OmexDescription should be equal')
+
+        self.assertEqual(desc.creator[0].family_name, 'Peters')
+        self.assertEqual(desc.creator[0].given_name, 'Martin')
+        self.assertEqual(desc.creator[0].organization, 'University of Rostock')
+        self.assertEqual(desc.creator[0].email, 'mail@mail.org')
+
+        self.assertEqual(desc.creator[1].family_name, 'Scharm')
+        self.assertEqual(desc.creator[1].given_name, 'Martin')
+        self.assertEqual(desc.creator[1].organization, 'University of Rostock')
+
+        # check removal of entry
+        self.carchive.remove_entry(test_file_name)
 
         self.carchive.pack()
         self.close_archive()

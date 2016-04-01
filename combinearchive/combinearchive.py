@@ -2,7 +2,8 @@ import os
 import shutil
 import tempfile
 import re
-import zipfile
+# import zipfile
+import custom_zip as zipfile
 import xml.dom.minidom as minidom
 import metadata
 try:
@@ -90,6 +91,7 @@ class CombineArchive(metadata.MetaDataHolder):
         # go over all possible metdata files
         for meta_file in self.filter_format(self._XML_CONTENT_METADATA_TYPE):
             # parse the xml
+            #print 'load metadata: {}'.format(meta_file.read())
             meta = minidom.parseString(meta_file.read())
             # find every rdf:Description
             for description in meta.getElementsByTagNameNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.description):
@@ -112,13 +114,13 @@ class CombineArchive(metadata.MetaDataHolder):
 
                 about.add_description(data, fragment=fragment_str)
 
-    def _write_manifest(self, zip=None):
+    def _write_manifest(self, zip_file=None):
         """
         internal function.
         Writes the manifest file of a COMBINE Archive
         """
-        if zip is None:
-            zip = self._zip
+        if zip_file is None:
+            zip_file = self._zip
 
         # create new DOM object
         manifest = minidom.getDOMImplementation().createDocument(self._XML_ROOT_NS, self._XML_ROOT_ELEM, None)
@@ -143,12 +145,12 @@ class CombineArchive(metadata.MetaDataHolder):
 
         # write xml to zip
         xmlstring = manifest.toprettyxml()
-        zip.writestr(self.MANIFEST_LOCATION, xmlstring)
+        zip_file.writestr(self.MANIFEST_LOCATION, xmlstring)
 
-    def _write_metadata(self, zip=None):
+    def _write_metadata(self, zip_file=None):
 
-        if zip is None:
-            zip = self._zip
+        if zip_file is None:
+            zip_file = self._zip
 
         # create new DOM object for RDF
         rdf_document = minidom.getDOMImplementation().createDocument(metadata.Namespace.RDF_URI, metadata.Namespace.RDF, None)
@@ -160,11 +162,15 @@ class CombineArchive(metadata.MetaDataHolder):
             if not isinstance(entry, metadata.MetaDataHolder):
                 continue
             for description in entry.description:
-                rdf.appendChild(description._rebuild_xml(rdf_document))
+                desc_elem = description._rebuild_xml(rdf_document)
+                desc_elem.setAttributeNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.about, location)
+                rdf.appendChild(desc_elem)
 
         # write xml to zip
         xmlstring = rdf_document.toprettyxml()
-        zip.writestr(self.METADATA_LOCATION, xmlstring)
+        print 'new metadata: {}'.format(xmlstring)
+        self.add_entry(xmlstring, self._XML_CONTENT_METADATA_TYPE, location=self.METADATA_LOCATION, replace=True)
+        #zip_file.writestr(self.METADATA_LOCATION, xmlstring)
 
     def close(self):
         """
@@ -186,12 +192,12 @@ class CombineArchive(metadata.MetaDataHolder):
         new_zip = zipfile.ZipFile(new_file, mode='a')
 
         # add main entries
-        self._write_manifest(zip=new_zip)
-        self._write_metadata(zip=new_zip)
+        self._write_metadata(zip_file=new_zip)  # write metadata first, so the ArchiveEntry is updated
+        self._write_manifest(zip_file=new_zip)
 
         # add all entries
         for (location, entry) in self.entries.items():
-            if location in self.ARCHIVE_REFERENCE or location == self.MANIFEST_LOCATION or location == self.METADATA_LOCATION:
+            if location in self.ARCHIVE_REFERENCE or location == self.MANIFEST_LOCATION:
                 # skip root entry (representing the archive itself) and the two main entries (manifest and metadata)
                 continue
 
@@ -233,7 +239,7 @@ class CombineArchive(metadata.MetaDataHolder):
         # clean location
         location = clean_pathname(location)
 
-        if location == self.MANIFEST_LOCATION or location == self.METADATA_LOCATION or location in self.ARCHIVE_REFERENCE:
+        if location == self.MANIFEST_LOCATION or location in self.ARCHIVE_REFERENCE:
             raise CombineArchiveException('it is not allowed to name a file {loc}'.format(loc=location))
 
         if location in self._zip.namelist():
@@ -243,8 +249,13 @@ class CombineArchive(metadata.MetaDataHolder):
                 self.remove_entry(location)
 
         # write file to zip
-        self._zip.write(file, location)
-        entry = ArchiveEntry(location, format=format, master=master, zipinfo=self._zip.getinfo(location))
+        if isinstance(file, (str, unicode)):
+            # file is actually string
+            zipinfo = self._zip.writestr(location, file)
+        else:
+            zipinfo = self._zip.write(file, location)
+
+        entry = ArchiveEntry(location, format=format, master=master, zipinfo=zipinfo)
         self.entries[entry.location] = entry
         return entry
 
