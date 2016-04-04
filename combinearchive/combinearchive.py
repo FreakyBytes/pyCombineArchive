@@ -2,16 +2,41 @@ import os
 import shutil
 import tempfile
 import re
+from StringIO import StringIO
 # import zipfile
 import custom_zip as zipfile
-import xml.dom.minidom as minidom
-import metadata
+from xml.etree import ElementTree
 try:
     # Python 3
     from urllib.parse import urlparse, urljoin
 except ImportError:
     # Python 2
     from urlparse import urlparse, urljoin
+
+import metadata
+import utils
+import exceptions
+
+# XML names
+_XML_ROOT_ELEM = 'omex:omexManifest'
+_XML_ROOT_NS = 'http://identifiers.org/combine.specifications/omex-manifest'
+_XML_CONTENT_TAG = 'omex:content'
+_XML_CONTENT_LOCATION = 'omex:location'
+_XML_CONTENT_FORMAT = 'omex:format'
+_XML_CONTENT_MASTER = 'omex:master'
+_XML_CONTENT_ARCHIVE_TYPE = 'http://identifiers.org/combine.specifications/omex'
+_XML_CONTENT_METADATA_TYPE = 'http://identifiers.org/combine.specifications/omex-metadata'
+_XML_NS = {
+    'omex': _XML_ROOT_NS,
+    metadata.Namespace.RDF: metadata.Namespace.RDF_URI,
+    metadata.Namespace.DC: metadata.Namespace.DC_URI,
+    metadata.Namespace.VCARD: metadata.Namespace.VCARD_URI,
+    metadata.Namespace.BQMODEL: metadata.Namespace.BQMODEL_URI,
+}
+
+# register namespaces to ElementTree
+for prefix, url in _XML_NS.items():
+    ElementTree.register_namespace(prefix, url)
 
 
 class CombineArchive(metadata.MetaDataHolder):
@@ -23,16 +48,6 @@ class CombineArchive(metadata.MetaDataHolder):
     METADATA_LOCATION = 'metadata.rdf'
     # paths used in the manifest to assign meta data to the archive itself
     ARCHIVE_REFERENCE = ('.', '/')
-
-    # XML names
-    _XML_ROOT_ELEM = 'omexManifest'
-    _XML_ROOT_NS = 'http://identifiers.org/combine.specifications/omex-manifest'
-    _XML_CONTENT_TAG = 'content'
-    _XML_CONTENT_LOCATION = 'location'
-    _XML_CONTENT_FORMAT = 'format'
-    _XML_CONTENT_MASTER = 'master'
-    _XML_CONTENT_ARCHIVE_TYPE = 'http://identifiers.org/combine.specifications/omex'
-    _XML_CONTENT_METADATA_TYPE = 'http://identifiers.org/combine.specifications/omex-metadata'
 
     def __init__(self, archive):
         super(CombineArchive, self).__init__()
@@ -53,27 +68,28 @@ class CombineArchive(metadata.MetaDataHolder):
         """
         try:
             with self._zip.open(self.MANIFEST_LOCATION) as manifest_file:
-                manifest = minidom.parseString( ''.join(manifest_file.readlines()) )
+                xml = manifest_file.read()
+                print xml
+                manifest = ElementTree.fromstring(xml)
         except KeyError:
-            # manifest does not exists, probaply an empty/new archive
+            # manifest does not exists, probably an empty/new archive
             return False
 
         # check for correct root element and namespace
-        root = manifest.documentElement
-        if root.tagName != self._XML_ROOT_ELEM or root.getAttribute('xmlns') != self._XML_ROOT_NS:
-            raise CombineArchiveException('manifest has no valid omex root element')
+        if manifest.tag != utils.extend_tag_name(_XML_ROOT_ELEM, _XML_NS):
+            raise exceptions.CombineArchiveException('manifest has no valid omex root element')
 
         # check entries
-        for entry in root.getElementsByTagName(self._XML_CONTENT_TAG):
-            location = entry.getAttribute(self._XML_CONTENT_LOCATION)
-            format = entry.getAttribute(self._XML_CONTENT_FORMAT)
-            master = (True if entry.getAttribute(self._XML_CONTENT_MASTER) == 'True' else False)
-
-            if not location or not format:
-                raise CombineArchiveException('location and format field are required. Corrupt manifest.xml')
+        for entry in manifest.findall(_XML_CONTENT_TAG, _XML_NS):
+            try:
+                location = entry.attrib['_XML_CONTENT_LOCATION']
+                entry_format = entry['_XML_CONTENT_FORMAT']
+                master = True if entry.attrib.get(_XML_CONTENT_MASTER, False) in ('True', 'true', True) else False
+            except KeyError:
+                raise exceptions.CombineArchiveException('location and format field are required. Corrupt manifest.xml')
 
             # clean location
-            location = clean_pathname(location)
+            location = utils.clean_pathname(location)
 
             # check if file is in zip, if it's not the root element
             zipinfo = None
@@ -81,23 +97,26 @@ class CombineArchive(metadata.MetaDataHolder):
                 try:
                     zipinfo = self._zip.getinfo(location)
                 except KeyError:
-                    raise CombineArchiveException("{location} is specified by the manifest, but not contained by the ZIP file".format(location=location))
+                    raise exceptions.CombineArchiveException("{location} is specified by the manifest, but not contained by the ZIP file".format(location=location))
 
-            archive_entry = ArchiveEntry(location, format=format, master=master, archive=self, zipinfo=zipinfo)
+            archive_entry = ArchiveEntry(location, format=entry_format, master=master, archive=self, zipinfo=zipinfo)
             self.entries[location] = archive_entry
 
     def _read_metadata(self):
 
         # go over all possible metdata files
-        for meta_file in self.filter_format(self._XML_CONTENT_METADATA_TYPE):
+        for meta_file in self.filter_format(_XML_CONTENT_METADATA_TYPE):
             # parse the xml
             #print 'load metadata: {}'.format(meta_file.read())
-            meta = minidom.parseString(meta_file.read())
+            meta = ElementTree.fromstring(meta_file.read())
             # find every rdf:Description
-            for description in meta.getElementsByTagNameNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.description):
-                about_url = urlparse(description.getAttributeNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.about))
-                about_str = about_url.path
-                fragment_str = about_url.fragment
+            for description in meta.findall(metadata.Namespace.rdf_terms.description, _XML_NS):
+                try:
+                    about_url = urlparse(description.attrib[metadata.Namespace.rdf_terms.about])
+                    about_str = about_url.path
+                    fragment_str = about_url.fragment
+                except KeyError:
+                    raise exceptions.CombineArchiveException('A metadata description tag has to have an about field')
 
                 if about_str in self.ARCHIVE_REFERENCE:
                     # meta data is about the archive (root element)
@@ -123,54 +142,54 @@ class CombineArchive(metadata.MetaDataHolder):
             zip_file = self._zip
 
         # create new DOM object
-        manifest = minidom.getDOMImplementation().createDocument(self._XML_ROOT_NS, self._XML_ROOT_ELEM, None)
-        root = manifest.documentElement
-        root.setAttribute('xmlns', self._XML_ROOT_NS)
+        manifest = ElementTree.Element(utils.extend_tag_name(_XML_ROOT_ELEM, _XML_NS))
 
         # write first entry for archive itself
-        content = manifest.createElement(self._XML_CONTENT_TAG)
-        content.setAttribute(self._XML_CONTENT_LOCATION, '.')
-        content.setAttribute(self._XML_CONTENT_FORMAT, self._XML_CONTENT_ARCHIVE_TYPE)
-        root.appendChild(content)
+        content = ElementTree.SubElement(manifest, utils.extend_tag_name(_XML_ROOT_ELEM, _XML_NS))
+        content.attrib.update({
+            utils.extend_tag_name(_XML_CONTENT_LOCATION, _XML_NS): '.',
+            utils.extend_tag_name(_XML_CONTENT_FORMAT, _XML_NS): _XML_CONTENT_ARCHIVE_TYPE,
+        })
 
         for (location, entry) in self.entries.items():
-            format = check_format(entry.format)
-            content = manifest.createElement(self._XML_CONTENT_TAG)
-            content.setAttribute(self._XML_CONTENT_LOCATION, entry.location)
-            content.setAttribute(self._XML_CONTENT_FORMAT, format)
+            entry_format = utils.check_format(entry.format)
+            content = ElementTree.SubElement(manifest, utils.extend_tag_name(_XML_ROOT_ELEM, _XML_NS))
+            content.attrib.update({
+                utils.extend_tag_name(_XML_CONTENT_LOCATION, _XML_NS): location,
+                utils.extend_tag_name(_XML_CONTENT_FORMAT, _XML_NS): entry_format,
+            })
             if entry.master:
-                content.setAttribute(self._XML_CONTENT_MASTER, True)
-
-            root.appendChild(content)
+                content.attrib[utils.extend_tag_name(_XML_CONTENT_MASTER, _XML_NS)] = True
 
         # write xml to zip
-        xmlstring = manifest.toprettyxml()
-        zip_file.writestr(self.MANIFEST_LOCATION, xmlstring)
+        io = StringIO()
+        ElementTree.ElementTree(manifest).write(io, xml_declaration=True, default_namespace=_XML_ROOT_NS)
+        zip_file.writestr(self.MANIFEST_LOCATION, io.getvalue())
+        io.close()
 
     def _write_metadata(self, zip_file=None):
 
         if zip_file is None:
             zip_file = self._zip
 
-        # create new DOM object for RDF
-        rdf_document = minidom.getDOMImplementation().createDocument(metadata.Namespace.RDF_URI, metadata.Namespace.RDF, None)
-        rdf = rdf_document.documentElement
-        rdf.setAttribute('xmlns', metadata.Namespace.RDF_URI)
+        # create new Element object for RDF
+        rdf = ElementTree.Element(utils.extend_tag_name(metadata.Namespace.rdf_terms.rdf, _XML_NS))
 
         # iterate over all metadata for each entry
         for (location, entry) in self.entries.items():
             if not isinstance(entry, metadata.MetaDataHolder):
                 continue
             for description in entry.description:
-                desc_elem = description._rebuild_xml(rdf_document)
-                desc_elem.setAttributeNS(metadata.Namespace.RDF_URI, metadata.Namespace.rdf_terms.about, location)
-                rdf.appendChild(desc_elem)
+                desc_elem = description._rebuild_xml()
+                desc_elem.attrib[utils.extend_tag_name(metadata.Namespace.rdf_terms.about, _XML_NS)] = location
+                rdf.append(desc_elem)
 
         # write xml to zip
-        xmlstring = rdf_document.toprettyxml()
-        print 'new metadata: {}'.format(xmlstring)
-        self.add_entry(xmlstring, self._XML_CONTENT_METADATA_TYPE, location=self.METADATA_LOCATION, replace=True)
+        io = StringIO()
+        ElementTree.ElementTree(rdf).write(io, xml_declaration=True)
+        self.add_entry(io.getvalue(), _XML_CONTENT_METADATA_TYPE, location=self.METADATA_LOCATION, replace=True)
         #zip_file.writestr(self.METADATA_LOCATION, xmlstring)
+        io.close()
 
     def close(self):
         """
@@ -228,23 +247,23 @@ class CombineArchive(metadata.MetaDataHolder):
             ArchiveEntry
         """
         if not file or not format:
-            raise CombineArchiveException('both a file and the corresponding format must be provided')
+            raise exceptions.CombineArchiveException('both a file and the corresponding format must be provided')
         # check format schema
-        format = check_format(format)
+        format = utils.check_format(format)
 
         # no location provided. Guess it
         if location is None or not location:
             location = os.path.basename(file)
 
         # clean location
-        location = clean_pathname(location)
+        location = utils.clean_pathname(location)
 
         if location == self.MANIFEST_LOCATION or location in self.ARCHIVE_REFERENCE:
-            raise CombineArchiveException('it is not allowed to name a file {loc}'.format(loc=location))
+            raise exceptions.CombineArchiveException('it is not allowed to name a file {loc}'.format(loc=location))
 
         if location in self._zip.namelist():
             if replace is False:
-                raise CombineArchiveException('{loc} exists already in the COMBINE archive. set replace=True, to override it'.format(loc=location))
+                raise exceptions.CombineArchiveException('{loc} exists already in the COMBINE archive. set replace=True, to override it'.format(loc=location))
             else:
                 self.remove_entry(location)
 
@@ -264,7 +283,7 @@ class CombineArchive(metadata.MetaDataHolder):
         Removes an entry from the COMBINE archive. The file will remain in the
         zip archive, until pack() is called.
         """
-        location = clean_pathname(location)
+        location = utils.clean_pathname(location)
         if self.entries[location]:
             del self.entries[location]
         else:
@@ -275,7 +294,7 @@ class CombineArchive(metadata.MetaDataHolder):
         Returns the archive entry in the given location or raises an KeyError,
         if not found
         """
-        location = clean_pathname(location)
+        location = utils.clean_pathname(location)
         if self.entries[location]:
             return self.entries[location]
         else:
@@ -292,8 +311,8 @@ class CombineArchive(metadata.MetaDataHolder):
 
         # check format argument against spec
         try:
-            check_format(format)
-        except CombineArchiveFormatException as e:
+            utils.check_format(format)
+        except exceptions.CombineArchiveFormatException as e:
             raise KeyError('{format} is no valid format, according to the OMEX specification. {cause}'.format(format=format, cause=e.message))
 
         if regex is True:
@@ -322,83 +341,8 @@ class ArchiveEntry(metadata.MetaDataHolder):
 
     def read(self):
         if self.zipinfo is not None and self.archive is not None:
-            return self.archive._zip.read( self.zipinfo )
+            return self.archive._zip.read(self.zipinfo)
         elif self.zipinfo is None and self.archive is not None:
-            return self.archive._zip.read( self.location )
+            return self.archive._zip.read(self.location)
         else:
-            raise CombineArchiveException('There is no reference back to the Combine archive')
-
-
-class CombineArchiveException(Exception):
-    pass
-
-
-class CombineArchiveFormatException(CombineArchiveException):
-    pass
-
-
-def clean_pathname(path):
-    """
-    basically removes leading slashes, because the python zip does not handle
-    them
-    """
-    path = os.path.normpath(unicode(path))
-    if path[0] == '/':
-        path = path[1:]
-
-    return path
-
-
-__mime_pattern = re.compile(r'^([a-zA-Z0-9\+]+)/([a-zA-Z0-9\+]+)$')
-__purl_mime_base = 'http://purl.org/NET/mediatypes/{ctype}/{format}'
-def convert_mimetype(mime):
-    """
-    dedects and automatically converts mime-type like format specifications
-    """
-    match = __mime_pattern.match(mime)
-    if match:
-        # mime is in old mime type format -> put it into purl.org url
-        mime = __purl_mime_base.format(ctype=match.group(1), format=match.group(2))
-
-    return mime
-
-
-__format_url_pattern = re.compile(r'^https?\:\/\/(?:www\.)?(?P<domain>[\w\.\-]+)\/(?P<format>[\w\.\-+\/]+)$')
-def check_format(format, convert=True):
-    """
-    checks if either an indentifiers.org format url or a purl.org format url.
-    If format uses old mime type schema, it corrects it to use purl.org via
-    convert_mimetype()
-
-    Returns:
-        format
-
-    Raises CombineArchiveFormatException:
-        if format is unknown or not correct
-    """
-    # first try to fix old mime type declaration, just in case
-    if convert:
-        format = convert_mimetype(format)
-
-    # check if format is url
-    match = __format_url_pattern.match(format)
-    if not match:
-        # format is not a url
-        if convert is False and __mime_pattern.match(format):
-            # we're not allowed to change the format, so it could be an mime
-            # type
-            return format
-        else:
-            # obviously no url nor mime tpye -> CombineArchiveFormatException
-            raise CombineArchiveFormatException('format is not a valid url {}'.format(format))
-    else:
-        # url schema seems ok -> check for correct base urls (purl.org or
-        # identifiers.org)
-        domain = match.group('domain')
-        if not domain == 'purl.org' and not domain == 'identifiers.org':
-            # unknown format domain -> CombineArchiveFormatException
-            raise CombineArchiveFormatException('{domain} is an unknown format domain. Just purl.org and identifiers.org are allowed at the moment'.format(domain=domain))
-
-    # everything seems to be alright
-    # return format
-    return format
+            raise exceptions.CombineArchiveException('There is no reference back to the Combine archive')
