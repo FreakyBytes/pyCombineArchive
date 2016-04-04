@@ -21,7 +21,7 @@ def extend_tag_name(tag_name, namespace_dict):
     """
     match = __xml_tag_regex.match(tag_name)
     if match:
-        return '{{{ns}}}:{tag}'.format(ns=namespace_dict[match.group('prefix')], tag=match.group('tag'))
+        return '{{{ns}}}{tag}'.format(ns=namespace_dict[match.group('prefix')], tag=match.group('tag'))
     else:
         return tag_name
 

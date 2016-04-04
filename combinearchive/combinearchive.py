@@ -82,8 +82,8 @@ class CombineArchive(metadata.MetaDataHolder):
         # check entries
         for entry in manifest.findall(_XML_CONTENT_TAG, _XML_NS):
             try:
-                location = entry.attrib['_XML_CONTENT_LOCATION']
-                entry_format = entry['_XML_CONTENT_FORMAT']
+                location = utils.get_attribute(entry, _XML_CONTENT_LOCATION, _XML_NS)
+                entry_format = utils.get_attribute(entry, _XML_CONTENT_FORMAT, _XML_NS)
                 master = True if entry.attrib.get(_XML_CONTENT_MASTER, False) in ('True', 'true', True) else False
             except KeyError:
                 raise exceptions.CombineArchiveException('location and format field are required. Corrupt manifest.xml')
@@ -112,7 +112,7 @@ class CombineArchive(metadata.MetaDataHolder):
             # find every rdf:Description
             for description in meta.findall(metadata.Namespace.rdf_terms.description, _XML_NS):
                 try:
-                    about_url = urlparse(description.attrib[metadata.Namespace.rdf_terms.about])
+                    about_url = urlparse(utils.get_attribute(description, metadata.Namespace.rdf_terms.about, _XML_NS))
                     about_str = about_url.path
                     fragment_str = about_url.fragment
                 except KeyError:
