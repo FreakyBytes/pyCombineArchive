@@ -130,6 +130,8 @@ class FormatConversionTest(unittest.TestCase):
             utils.check_format('foobar', convert=False)                        # no mime type or url
         with self.assertRaises(exceptions.CombineArchiveFormatException):
             utils.check_format('ftp://purl.org/mediatypes/application/pdf')    # not a valid url schema (only https? allowed)
+        with self.assertRaises(exceptions.CombineArchiveFormatException):
+            utils.check_format('http://not-an-form-url.org/bla')               # not a valid url for format specification
 
         # check for identifiers urls
         self.assertEqual(utils.check_format('http://identifiers.org/combine.specifications/cellml'),
