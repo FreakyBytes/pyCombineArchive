@@ -15,13 +15,6 @@ import utils
 import exceptions
 
 
-def _get_text_from_elem(xml_element):
-    """
-    gets all textNodes under the given element as String
-    """
-    return ' '.join(t.nodeValue for t in xml_element.childNodes if t.nodeType == t.TEXT_NODE)
-
-
 class MetaDataHolder(object):
     """
     Mixin for objects, which can contain/be described by meta data
