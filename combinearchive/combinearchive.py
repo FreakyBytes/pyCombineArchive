@@ -68,12 +68,12 @@ class CombineArchive(metadata.MetaDataHolder):
         """
         try:
             with self._zip.open(self.MANIFEST_LOCATION) as manifest_file:
-                xml = manifest_file.read()
-                print xml
-                manifest = ElementTree.fromstring(xml)
+                manifest = ElementTree.fromstring(manifest_file.read())
         except KeyError:
             # manifest does not exists, probably an empty/new archive
             return False
+        except ElementTree.ParseError as e:
+            raise exceptions.CombineArchiveException('Cannot parse xml manifest. {}'.format(e.msg))
 
         # check for correct root element and namespace
         if manifest.tag != utils.extend_tag_name(_XML_ROOT_ELEM, _XML_NS):
@@ -97,7 +97,8 @@ class CombineArchive(metadata.MetaDataHolder):
                 try:
                     zipinfo = self._zip.getinfo(location)
                 except KeyError:
-                    raise exceptions.CombineArchiveException("{location} is specified by the manifest, but not contained by the ZIP file".format(location=location))
+                    raise exceptions.CombineArchiveException(
+                        '{location} is specified by the manifest, but not contained by the ZIP file'.format(location=location))
 
             archive_entry = ArchiveEntry(location, format=entry_format, master=master, archive=self, zipinfo=zipinfo)
             self.entries[location] = archive_entry
@@ -106,9 +107,13 @@ class CombineArchive(metadata.MetaDataHolder):
 
         # go over all possible metdata files
         for meta_file in self.filter_format(_XML_CONTENT_METADATA_TYPE):
-            # parse the xml
-            #print 'load metadata: {}'.format(meta_file.read())
-            meta = ElementTree.fromstring(meta_file.read())
+            try:
+                # parse the xml
+                meta = ElementTree.fromstring(meta_file.read())
+            except ElementTree.ParseError as e:
+                raise exceptions.CombineArchiveException(
+                    'Cannot parse xml metadata {file}. {msg}'.format(file=meta_file.location, msg=e.msg))
+
             # find every rdf:Description
             for description in meta.findall(metadata.Namespace.rdf_terms.description, _XML_NS):
                 try:
@@ -129,8 +134,6 @@ class CombineArchive(metadata.MetaDataHolder):
                 try:
                     data = metadata.OmexMetaDataObject(description)
                 except ValueError as e:
-                    print 'reading meta data failed'
-                    print e
                     data = metadata.DefaultMetaDataObject(description)
 
                 about.add_description(data, fragment=fragment_str)
