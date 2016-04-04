@@ -128,7 +128,9 @@ class CombineArchive(metadata.MetaDataHolder):
                 # start parsing
                 try:
                     data = metadata.OmexMetaDataObject(description)
-                except ValueError:
+                except ValueError as e:
+                    print 'reading meta data failed'
+                    print e
                     data = metadata.DefaultMetaDataObject(description)
 
                 about.add_description(data, fragment=fragment_str)
@@ -145,7 +147,7 @@ class CombineArchive(metadata.MetaDataHolder):
         manifest = ElementTree.Element(utils.extend_tag_name(_XML_ROOT_ELEM, _XML_NS))
 
         # write first entry for archive itself
-        content = ElementTree.SubElement(manifest, utils.extend_tag_name(_XML_ROOT_ELEM, _XML_NS))
+        content = ElementTree.SubElement(manifest, utils.extend_tag_name(_XML_CONTENT_TAG, _XML_NS))
         content.attrib.update({
             utils.extend_tag_name(_XML_CONTENT_LOCATION, _XML_NS): '.',
             utils.extend_tag_name(_XML_CONTENT_FORMAT, _XML_NS): _XML_CONTENT_ARCHIVE_TYPE,
@@ -153,7 +155,7 @@ class CombineArchive(metadata.MetaDataHolder):
 
         for (location, entry) in self.entries.items():
             entry_format = utils.check_format(entry.format)
-            content = ElementTree.SubElement(manifest, utils.extend_tag_name(_XML_ROOT_ELEM, _XML_NS))
+            content = ElementTree.SubElement(manifest, utils.extend_tag_name(_XML_CONTENT_TAG, _XML_NS))
             content.attrib.update({
                 utils.extend_tag_name(_XML_CONTENT_LOCATION, _XML_NS): location,
                 utils.extend_tag_name(_XML_CONTENT_FORMAT, _XML_NS): entry_format,

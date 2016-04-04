@@ -191,12 +191,12 @@ class OmexMetaDataObject(MetaDataObject):
         try:
             # getting the dcterms description
             desc_elem = self._xml_element.find(Namespace.dc_terms.description, combinearchive._XML_NS)
-            if desc_elem:
+            if desc_elem is not None:
                 self.description = desc_elem.text
 
             # parsing the date of creation
             created_elem = self._xml_element.find(Namespace.dc_terms.created, combinearchive._XML_NS)
-            if created_elem:
+            if created_elem is not None:
                 w3cdtf = created_elem.find(Namespace.dc_terms.w3cdtf, combinearchive._XML_NS)
                 self.created = self._parse_date(w3cdtf.text)
 
@@ -208,7 +208,7 @@ class OmexMetaDataObject(MetaDataObject):
             # parsing all modification dates with nested W3CDFT date declaration
             modified_elems = self._xml_element.findall(Namespace.dc_terms.modified, combinearchive._XML_NS)
             for mod in modified_elems:
-                w3cdtf = modified_elems.find(Namespace.dc_terms.w3cdtf, combinearchive._XML_NS)
+                w3cdtf = mod.find(Namespace.dc_terms.w3cdtf, combinearchive._XML_NS)
                 self.modified.append(self._parse_date(w3cdtf.text))
 
         except BaseException as e:
@@ -273,24 +273,26 @@ class VCard(object):
         # generate new VCard object
         vcard = VCard()
 
-        # parse family name
-        fn_elem = xml_element.find(Namespace.vcard_terms.family_name, combinearchive._XML_NS)
-        if fn_elem:
-            vcard.family_name = fn_elem.text
+        name_elem = xml_element.find(Namespace.vcard_terms.has_name, combinearchive._XML_NS)
+        if name_elem is not None:
+            # parse family name
+            fn_elem = name_elem.find(Namespace.vcard_terms.family_name, combinearchive._XML_NS)
+            if fn_elem is not None:
+                vcard.family_name = fn_elem.text
 
-        # parse given name
-        gn_elem = xml_element.find(Namespace.vcard_terms.given_name, combinearchive._XML_NS)
-        if gn_elem:
-            vcard.given_name = gn_elem.text
+            # parse given name
+            gn_elem = name_elem.find(Namespace.vcard_terms.given_name, combinearchive._XML_NS)
+            if gn_elem is not None:
+                vcard.given_name = gn_elem.text
 
         # parse email
         em_elem = xml_element.find(Namespace.vcard_terms.email, combinearchive._XML_NS)
-        if em_elem:
+        if em_elem is not None:
             vcard.email = em_elem.text
 
         # parse organization name
         on_elem = xml_element.find(Namespace.vcard_terms.organization_name, combinearchive._XML_NS)
-        if on_elem:
+        if on_elem is not None:
             vcard.organization = on_elem.text
 
         # return parsed object
@@ -324,7 +326,7 @@ class VCard(object):
 
         # add organization
         if self.organization and self.organization != '':
-            on_elem = ElementTree.SubElement(elem, utils.extend_tag_name(Namespace.vcard_terms.email, combinearchive._XML_NS))
+            on_elem = ElementTree.SubElement(elem, utils.extend_tag_name(Namespace.vcard_terms.organization_name, combinearchive._XML_NS))
             on_elem.text = self.organization
 
         return elem
