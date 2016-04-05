@@ -85,7 +85,7 @@ class AddDeleteTest(BaseReadTest):
         self.open_archive()
         test_file_name = "test/1.txt"
 
-        entry = self.carchive.add_entry(self.get_random_file(), "text/plain", test_file_name)
+        entry = self.carchive.add_entry(self.get_random_file(), "text/plain", test_file_name, master=True)
         self.assertIsNotNone(entry, 'created entry is None')
 
         meta = metadata.OmexMetaDataObject()
