@@ -308,7 +308,7 @@ class CombineArchive(metadata.MetaDataHolder):
     def filter_format(self, format, regex=False):
         """
         Generator including all archive entries with a given format.
-        Is regex=True, format will be compiled to a regual expression and
+        Is regex=True, format will be compiled to a regular expression and
         matched against the entry formats
         """
         if not format:
