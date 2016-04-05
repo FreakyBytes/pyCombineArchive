@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from distutils.core import setup
+from setuptools import find_packages
 # To use a consistent encoding
 from codecs import open
 from os import path
@@ -19,5 +20,5 @@ setup(
     long_description=long_description,
     author='Martin Peters',
     url='https://github.com/FreakyBytes/pyCombineArchive',
-    packages=['combinearchive'],
+    packages=find_packages(exclude=['tests*']),
 )
