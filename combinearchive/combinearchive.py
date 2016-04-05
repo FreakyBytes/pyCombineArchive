@@ -164,7 +164,7 @@ class CombineArchive(metadata.MetaDataHolder):
                 utils.extend_tag_name(_XML_CONTENT_FORMAT, _XML_NS): entry_format,
             })
             if entry.master:
-                content.attrib[utils.extend_tag_name(_XML_CONTENT_MASTER, _XML_NS)] = True
+                content.attrib[utils.extend_tag_name(_XML_CONTENT_MASTER, _XML_NS)] = 'true'
 
         # write xml to zip
         io = StringIO()
