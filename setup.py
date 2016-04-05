@@ -19,5 +19,5 @@ setup(
     long_description=long_description,
     author='Martin Peters',
     url='https://github.com/FreakyBytes/pyCombineArchive',
-    packages=['combinearchive.combinearchive', 'combinearchive.metadata'],
+    package=['combinearchive'],
 )
