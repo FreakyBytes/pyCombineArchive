@@ -83,7 +83,7 @@ class CombineArchive(metadata.MetaDataHolder):
         for entry in manifest.findall(_XML_CONTENT_TAG, _XML_NS):
             try:
                 location = utils.get_attribute(entry, _XML_CONTENT_LOCATION, _XML_NS)
-                entry_format = utils.get_attribute(entry, _XML_CONTENT_FORMAT, _XML_NS)
+                entry_format = utils.check_format(utils.get_attribute(entry, _XML_CONTENT_FORMAT, _XML_NS), convert=False)
                 master = True if entry.attrib.get(_XML_CONTENT_MASTER, False) in ('True', 'true', True) else False
             except KeyError:
                 raise exceptions.CombineArchiveException('location and format field are required. Corrupt manifest.xml')

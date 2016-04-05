@@ -134,8 +134,9 @@ class BadArchiveTest(unittest.TestCase):
         with self.assertRaises(exceptions.CombineArchiveException):
             combinearchive.CombineArchive('tests/data/paper-repressilator-mod-manifest.omex')
 
-        #with self.assertRaises(exceptions.CombineArchiveException):
-        combinearchive.CombineArchive('tests/data/paper-repressilator-mod-manifest-2.omex')
+        with self.assertRaises(exceptions.CombineArchiveFormatException):
+            # invalid format
+            combinearchive.CombineArchive('tests/data/paper-repressilator-mod-manifest-2.omex')
 
         with self.assertRaises(exceptions.CombineArchiveException):
             combinearchive.CombineArchive('tests/data/paper-repressilator-mod-manifest-3.omex')
