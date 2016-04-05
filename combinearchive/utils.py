@@ -4,7 +4,7 @@ import os
 import exceptions
 
 # regex
-__xml_tag_regex = re.compile(r'^(?:(?P<prefix>[\w]+):)?(?P<tag>[\w]+)$')
+__xml_tag_regex = re.compile(r'^(?:(?P<prefix>[\w-]+):)?(?P<tag>[\w-]+)$')
 __mime_pattern = re.compile(r'^([a-zA-Z0-9\+]+)/([a-zA-Z0-9\+]+)$')
 __purl_mime_base = 'http://purl.org/NET/mediatypes/{ctype}/{format}'
 __format_url_pattern = re.compile(r'^https?\:\/\/(?:www\.)?(?P<domain>[\w\.\-]+)\/(?P<format>[\w\.\-+\/]+)$')
