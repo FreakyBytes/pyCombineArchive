@@ -122,6 +122,33 @@ class AddDeleteTest(BaseReadTest):
         self.close_archive()
 
 
+class BadArchiveTest(unittest.TestCase):
+
+    def test_broken_manifest(self):
+
+        with self.assertRaises(exceptions.CombineArchiveException):
+            combinearchive.CombineArchive('tests/data/paper-repressilator-brokenmanifest.omex')
+
+    def test_modified_manifest(self):
+
+        with self.assertRaises(exceptions.CombineArchiveException):
+            combinearchive.CombineArchive('tests/data/paper-repressilator-mod-manifest.omex')
+
+        #with self.assertRaises(exceptions.CombineArchiveException):
+        combinearchive.CombineArchive('tests/data/paper-repressilator-mod-manifest-2.omex')
+
+        with self.assertRaises(exceptions.CombineArchiveException):
+            combinearchive.CombineArchive('tests/data/paper-repressilator-mod-manifest-3.omex')
+
+    def test_modified_meta(self):
+
+        with self.assertRaises(exceptions.CombineArchiveException):
+            combinearchive.CombineArchive('tests/data/paper-repressilator-mod-meta.omex')
+
+        with self.assertRaises(exceptions.CombineArchiveException):
+            combinearchive.CombineArchive('tests/data/paper-repressilator-mod-meta-2.omex')
+
+
 class FormatConversionTest(unittest.TestCase):
 
     def test_formatcheck(self):
