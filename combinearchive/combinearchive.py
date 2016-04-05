@@ -331,6 +331,12 @@ class CombineArchive(metadata.MetaDataHolder):
             elif pattern is None and format == entry.format:
                 yield entry
 
+    def get_master_entries(self):
+        """
+        Returns a list of entries with set master flag
+        """
+        return [entry for entry in self.entries.values() if entry.master is True]
+
 
 class ArchiveEntry(metadata.MetaDataHolder):
     """
