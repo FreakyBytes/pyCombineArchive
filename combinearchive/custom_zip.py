@@ -1521,8 +1521,13 @@ class PyZipFile(ZipFile):
         file_py  = pathname + ".py"
         file_pyc = pathname + ".pyc"
         file_pyo = pathname + ".pyo"
-        pycache_pyc = imp.cache_from_source(file_py, True)
-        pycache_pyo = imp.cache_from_source(file_py, False)
+        if hasattr(imp, 'cache_from_source'):
+            pycache_pyc = imp.cache_from_source(file_py, True)
+            pycache_pyo = imp.cache_from_source(file_py, False)
+        else:
+            pycache_pyc = file_pyc
+            pycache_pyo = file_pyo
+            
         if self._optimize == -1:
             # legacy mode: use whatever file is present
             if (os.path.isfile(file_pyo) and
