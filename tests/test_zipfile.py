@@ -506,8 +506,6 @@ class TestZip64InSmallFiles(unittest.TestCase):
     # see test_zipfile64 for proper tests.
 
     def setUp(self):
-        self._limit = zipfile.ZIP64_LIMIT
-        zipfile.ZIP64_LIMIT = 5
 
         line_gen = (bytes("Test of zipfile line %d." % i, "ascii")
                     for i in range(0, FIXEDTEST_SIZE))
@@ -516,6 +514,10 @@ class TestZip64InSmallFiles(unittest.TestCase):
         # Make a source file with some lines
         with open(TESTFN, "wb") as fp:
             fp.write(self.data)
+
+        # modify ZIP64_LIMIT last, so if write fails it won't affect the other tests
+        self._limit = zipfile.ZIP64_LIMIT
+        zipfile.ZIP64_LIMIT = 5
 
     def large_file_exception_test(self, f, compression):
         with zipfile.ZipFile(f, "w", compression) as zipfp:
