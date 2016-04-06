@@ -14,7 +14,6 @@ import struct
 import unittest
 import combinearchive.custom_zip as zipfile
 
-
 from tempfile import TemporaryFile
 from random import randint, random
 from unittest import skipUnless
@@ -64,7 +63,7 @@ class TestsWithSourceFile(unittest.TestCase):
             zipfp.printdir(file=fp)
             directory = fp.getvalue()
             lines = directory.splitlines()
-            self.assertEqual(len(lines), 4) # Number of files + header
+            self.assertEqual(len(lines), 4)  # Number of files + header
 
             self.assertIn('File Name', lines[0])
             self.assertIn('Modified', lines[0])
@@ -339,7 +338,7 @@ class TestsWithSourceFile(unittest.TestCase):
         """Test appending to an existing file that is not a zipfile."""
         # NOTE: this test fails if len(d) < 22 because of the first
         # line "fpin.seek(-22, 2)" in _EndRecData
-        data = b'I am not a ZipFile!'*10
+        data = b'I am not a ZipFile!' * 10
         with open(TESTFN2, 'wb') as f:
             f.write(data)
 
@@ -555,7 +554,7 @@ class TestZip64InSmallFiles(unittest.TestCase):
 
             directory = fp.getvalue()
             lines = directory.splitlines()
-            self.assertEqual(len(lines), 4) # Number of files + header
+            self.assertEqual(len(lines), 4)  # Number of files + header
 
             self.assertIn('File Name', lines[0])
             self.assertIn('Modified', lines[0])
@@ -652,6 +651,7 @@ class PyZipFileTests(unittest.TestCase):
 
     def test_write_python_package(self):
         import email
+
         packagedir = os.path.dirname(email.__file__)
 
         with TemporaryFile() as t, zipfile.PyZipFile(t, "w") as zipfp:
@@ -667,19 +667,24 @@ class PyZipFileTests(unittest.TestCase):
 
     def test_write_with_optimization(self):
         import email
+
         packagedir = os.path.dirname(email.__file__)
         # use .pyc if running test in optimization mode,
         # use .pyo if running test in debug mode
         optlevel = 1 if __debug__ else 0
         ext = '.pyo' if optlevel == 1 else '.pyc'
 
-        with TemporaryFile() as t, \
-                 zipfile.PyZipFile(t, "w", optimize=optlevel) as zipfp:
-            zipfp.writepy(packagedir)
+        try:
+            with TemporaryFile() as t, \
+                    zipfile.PyZipFile(t, "w", optimize=optlevel) as zipfp:
+                zipfp.writepy(packagedir)
 
-            names = zipfp.namelist()
-            self.assertIn('email/__init__' + ext, names)
-            self.assertIn('email/mime/text' + ext, names)
+                names = zipfp.namelist()
+                self.assertIn('email/__init__' + ext, names)
+                self.assertIn('email/mime/text' + ext, names)
+        except IOError:
+            print "\n Cannot execute test_write_with_optimization due to insufficient read permissions for %s" \
+                  % packagedir
 
     def test_write_python_directory(self):
         os.mkdir(TESTFN2)
@@ -732,17 +737,17 @@ class OtherTests(unittest.TestCase):
             b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x01\x00\x00\x00'
             b'\x00afilePK\x05\x06\x00\x00\x00\x00\x01\x00'
             b'\x01\x003\x00\x00\x003\x00\x00\x00\x00\x00'),
-    }
+        }
 
     def test_unicode_filenames(self):
         with zipfile.ZipFile(TESTFN, "w") as zf:
-            zf.writestr("foo.txt", "Test for unicode filename")
-            zf.writestr("\xf6.txt", "Test for unicode filename")
-            self.assertIsInstance(zf.infolist()[0].filename, str)
+            zf.writestr(u"foo.txt", "Test for unicode filename")
+            zf.writestr(u"\xf6.txt", "Test for unicode filename")
+            self.assertIsInstance(zf.infolist()[0].filename, str if sys.version_info[0] >= 3 else unicode)
 
         with zipfile.ZipFile(TESTFN, "r") as zf:
-            self.assertEqual(zf.filelist[0].filename, "foo.txt")
-            self.assertEqual(zf.filelist[1].filename, "\xf6.txt")
+            self.assertEqual(zf.filelist[0].filename, u"foo.txt")
+            self.assertEqual(zf.filelist[1].filename, u"\xf6.txt")
 
     def test_create_non_existent_file_for_append(self):
         if os.path.exists(TESTFN):
@@ -871,7 +876,7 @@ class OtherTests(unittest.TestCase):
             zipf.writestr("foo.txt", "O, for a Muse of Fire!")
 
         with zipfile.ZipFile(TESTFN, mode="r") as zipf:
-        # read the data to make sure the file is there
+            # read the data to make sure the file is there
             zipf.read("foo.txt")
             self.assertRaises(RuntimeError, zipf.open, "foo.txt", "q")
 
@@ -932,7 +937,7 @@ class OtherTests(unittest.TestCase):
             self.assertEqual(zipf.comment, comment)
 
         # check a comment of max length
-        comment2 = ''.join(['%d' % (i**3 % 10) for i in range((1 << 16)-1)])
+        comment2 = ''.join(['%d' % (i ** 3 % 10) for i in range((1 << 16) - 1)])
         comment2 = comment2.encode("ascii")
         with zipfile.ZipFile(TESTFN, mode="w") as zipf:
             zipf.comment = comment2
@@ -1047,25 +1052,25 @@ class DecryptionTests(unittest.TestCase):
     ZIP file."""
 
     data = (
-    b'PK\x03\x04\x14\x00\x01\x00\x00\x00n\x92i.#y\xef?&\x00\x00\x00\x1a\x00'
-    b'\x00\x00\x08\x00\x00\x00test.txt\xfa\x10\xa0gly|\xfa-\xc5\xc0=\xf9y'
-    b'\x18\xe0\xa8r\xb3Z}Lg\xbc\xae\xf9|\x9b\x19\xe4\x8b\xba\xbb)\x8c\xb0\xdbl'
-    b'PK\x01\x02\x14\x00\x14\x00\x01\x00\x00\x00n\x92i.#y\xef?&\x00\x00\x00'
-    b'\x1a\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x01\x00 \x00\xb6\x81'
-    b'\x00\x00\x00\x00test.txtPK\x05\x06\x00\x00\x00\x00\x01\x00\x01\x006\x00'
-    b'\x00\x00L\x00\x00\x00\x00\x00' )
+        b'PK\x03\x04\x14\x00\x01\x00\x00\x00n\x92i.#y\xef?&\x00\x00\x00\x1a\x00'
+        b'\x00\x00\x08\x00\x00\x00test.txt\xfa\x10\xa0gly|\xfa-\xc5\xc0=\xf9y'
+        b'\x18\xe0\xa8r\xb3Z}Lg\xbc\xae\xf9|\x9b\x19\xe4\x8b\xba\xbb)\x8c\xb0\xdbl'
+        b'PK\x01\x02\x14\x00\x14\x00\x01\x00\x00\x00n\x92i.#y\xef?&\x00\x00\x00'
+        b'\x1a\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x01\x00 \x00\xb6\x81'
+        b'\x00\x00\x00\x00test.txtPK\x05\x06\x00\x00\x00\x00\x01\x00\x01\x006\x00'
+        b'\x00\x00L\x00\x00\x00\x00\x00' )
     data2 = (
-    b'PK\x03\x04\x14\x00\t\x00\x08\x00\xcf}38xu\xaa\xb2\x14\x00\x00\x00\x00\x02'
-    b'\x00\x00\x04\x00\x15\x00zeroUT\t\x00\x03\xd6\x8b\x92G\xda\x8b\x92GUx\x04'
-    b'\x00\xe8\x03\xe8\x03\xc7<M\xb5a\xceX\xa3Y&\x8b{oE\xd7\x9d\x8c\x98\x02\xc0'
-    b'PK\x07\x08xu\xaa\xb2\x14\x00\x00\x00\x00\x02\x00\x00PK\x01\x02\x17\x03'
-    b'\x14\x00\t\x00\x08\x00\xcf}38xu\xaa\xb2\x14\x00\x00\x00\x00\x02\x00\x00'
-    b'\x04\x00\r\x00\x00\x00\x00\x00\x00\x00\x00\x00\xa4\x81\x00\x00\x00\x00ze'
-    b'roUT\x05\x00\x03\xd6\x8b\x92GUx\x00\x00PK\x05\x06\x00\x00\x00\x00\x01'
-    b'\x00\x01\x00?\x00\x00\x00[\x00\x00\x00\x00\x00' )
+        b'PK\x03\x04\x14\x00\t\x00\x08\x00\xcf}38xu\xaa\xb2\x14\x00\x00\x00\x00\x02'
+        b'\x00\x00\x04\x00\x15\x00zeroUT\t\x00\x03\xd6\x8b\x92G\xda\x8b\x92GUx\x04'
+        b'\x00\xe8\x03\xe8\x03\xc7<M\xb5a\xceX\xa3Y&\x8b{oE\xd7\x9d\x8c\x98\x02\xc0'
+        b'PK\x07\x08xu\xaa\xb2\x14\x00\x00\x00\x00\x02\x00\x00PK\x01\x02\x17\x03'
+        b'\x14\x00\t\x00\x08\x00\xcf}38xu\xaa\xb2\x14\x00\x00\x00\x00\x02\x00\x00'
+        b'\x04\x00\r\x00\x00\x00\x00\x00\x00\x00\x00\x00\xa4\x81\x00\x00\x00\x00ze'
+        b'roUT\x05\x00\x03\xd6\x8b\x92GUx\x00\x00PK\x05\x06\x00\x00\x00\x00\x01'
+        b'\x00\x01\x00?\x00\x00\x00[\x00\x00\x00\x00\x00' )
 
     plain = b'zipfile.py encryption test'
-    plain2 = b'\x00'*512
+    plain2 = b'\x00' * 512
 
     def setUp(self):
         with open(TESTFN, "wb") as fp:
@@ -1101,16 +1106,16 @@ class DecryptionTests(unittest.TestCase):
         self.assertEqual(self.zip2.read("zero"), self.plain2)
 
     def test_unicode_password(self):
-        self.assertRaises(TypeError, self.zip.setpassword, "unicode")
-        self.assertRaises(TypeError, self.zip.read, "test.txt", "python")
-        self.assertRaises(TypeError, self.zip.open, "test.txt", pwd="python")
-        self.assertRaises(TypeError, self.zip.extract, "test.txt", pwd="python")
+        self.assertRaises(TypeError, self.zip.setpassword, u"unicode")
+        self.assertRaises(TypeError, self.zip.read, "test.txt", u"python")
+        self.assertRaises(TypeError, self.zip.open, "test.txt", pwd=u"python")
+        self.assertRaises(TypeError, self.zip.extract, "test.txt", pwd=u"python")
 
 
 class TestsWithRandomBinaryFiles(unittest.TestCase):
     def setUp(self):
-        datacount = randint(16, 64)*1024 + randint(1, 1024)
-        self.data = b''.join(struct.pack('<f', random()*randint(-1000, 1000))
+        datacount = randint(16, 64) * 1024 + randint(1, 1024)
+        self.data = b''.join(struct.pack('<f', random() * randint(-1000, 1000))
                              for i in range(datacount))
 
         # Make a source file with some lines
@@ -1222,8 +1227,8 @@ class TestsWithMultipleOpens(unittest.TestCase):
     def setUp(self):
         # Create the ZIP archive
         with zipfile.ZipFile(TESTFN2, "w", zipfile.ZIP_DEFLATED) as zipfp:
-            zipfp.writestr('ones', '1'*FIXEDTEST_SIZE)
-            zipfp.writestr('twos', '2'*FIXEDTEST_SIZE)
+            zipfp.writestr('ones', '1' * FIXEDTEST_SIZE)
+            zipfp.writestr('twos', '2' * FIXEDTEST_SIZE)
 
     def test_same_file(self):
         # Verify that (when the ZipFile is in control of creating file objects)
@@ -1245,8 +1250,8 @@ class TestsWithMultipleOpens(unittest.TestCase):
                 data2 = zopen2.read(500)
                 data1 += zopen1.read(500)
                 data2 += zopen2.read(500)
-            self.assertEqual(data1, b'1'*FIXEDTEST_SIZE)
-            self.assertEqual(data2, b'2'*FIXEDTEST_SIZE)
+            self.assertEqual(data1, b'1' * FIXEDTEST_SIZE)
+            self.assertEqual(data2, b'2' * FIXEDTEST_SIZE)
 
     def test_interleaved(self):
         # Verify that (when the ZipFile is in control of creating file objects)
@@ -1257,8 +1262,8 @@ class TestsWithMultipleOpens(unittest.TestCase):
                 data2 = zopen2.read(500)
                 data1 += zopen1.read(500)
                 data2 += zopen2.read(500)
-            self.assertEqual(data1, b'1'*FIXEDTEST_SIZE)
-            self.assertEqual(data2, b'2'*FIXEDTEST_SIZE)
+            self.assertEqual(data1, b'1' * FIXEDTEST_SIZE)
+            self.assertEqual(data2, b'2' * FIXEDTEST_SIZE)
 
     def tearDown(self):
         unlink(TESTFN2)
@@ -1463,7 +1468,7 @@ class RemoveTests(unittest.TestCase):
             self.assertEqual(len(zf.infolist()), 0)
 
     def write_three_and_remove_one(self, index):
-        data_list = [bytes([randint(0,255) for i in range(10)]) for i in range(3)]
+        data_list = [bytes([randint(0, 255) for i in range(10)]) for i in range(3)]
         fname_list = ["firstfile", "secondfile", "thirdfile"]
 
         with zipfile.ZipFile(TESTFN, "w") as zf:
@@ -1475,7 +1480,7 @@ class RemoveTests(unittest.TestCase):
 
         i_to_check = list(range(len(data_list)))
         i_to_check.remove(index)
-        
+
         with zipfile.ZipFile(TESTFN, "r") as zf:
             for i in i_to_check:
                 # the last reads fail if the pointers weren't corrected
@@ -1489,12 +1494,12 @@ class RemoveTests(unittest.TestCase):
     def test_with_data_descriptor(self):
         fname = "foo.txt"
         data = "just add a file with a name and some data"
-        
+
         with zipfile.ZipFile(TESTFN, "w") as zf:
             zinfo = zipfile.ZipInfo(fname)
             zinfo.flag_bits = zinfo.flag_bits | zipfile._FHF_HAS_DATA_DESCRIPTOR
             zf.writestr(zinfo, data)
-            
+
         with zipfile.ZipFile(TESTFN, "r") as zf:
             zinfo = zf.getinfo(fname)
             data_desc_size = zf._get_data_descriptor_size(zinfo)
@@ -1512,7 +1517,7 @@ class RemoveTests(unittest.TestCase):
     def test_shrinks(self):
         fname = "foo.txt"
         data = "just add a file with a name and some data"
-        
+
         with zipfile.ZipFile(TESTFN, "w") as zf:
             zf.writestr(fname, data)
             zinfo = zf.getinfo(fname)
@@ -1552,6 +1557,7 @@ def test_main():
                  PyZipFileTests, DecryptionTests, TestsWithMultipleOpens,
                  TestWithDirectory, UniversalNewlineTests,
                  TestsWithRandomBinaryFiles, RemoveTests)
+
 
 if __name__ == "__main__":
     test_main()
