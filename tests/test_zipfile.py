@@ -11,8 +11,8 @@ import imp
 import time
 import shutil
 import struct
-import zipfile
 import unittest
+import combinearchive.custom_zip as zipfile
 
 
 from tempfile import TemporaryFile
@@ -35,7 +35,7 @@ SMALL_TEST_DATA = [('_ziptest1', '1q2w3e4r5t'),
 class TestsWithSourceFile(unittest.TestCase):
     def setUp(self):
         self.line_gen = (bytes("Zipfile test line %d. random float: %f" %
-                               (i, random()), "ascii")
+                               (i, random())).encode("ascii")
                          for i in range(FIXEDTEST_SIZE))
         self.data = b'\n'.join(self.line_gen) + b'\n'
 
@@ -1292,7 +1292,7 @@ class TestWithDirectory(unittest.TestCase):
 
 class UniversalNewlineTests(unittest.TestCase):
     def setUp(self):
-        self.line_gen = [bytes("Test of zipfile line %d." % i, "ascii")
+        self.line_gen = [bytes("Test of zipfile line %d." % i).encode("ascii")
                          for i in range(FIXEDTEST_SIZE)]
         self.seps = ('\r', '\r\n', '\n')
         self.arcdata, self.arcfiles = {}, {}
