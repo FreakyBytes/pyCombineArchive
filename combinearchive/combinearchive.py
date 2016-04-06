@@ -169,13 +169,14 @@ class CombineArchive(metadata.MetaDataHolder):
         # write xml to zip
         io = StringIO()
         ElementTree.ElementTree(manifest).write(io, xml_declaration=True, default_namespace=_XML_ROOT_NS)
+        try:
+            zip_file.remove(self.MANIFEST_LOCATION)
+        except KeyError:
+            pass  # Manifest does not exist yet, so removing it will fail
         zip_file.writestr(self.MANIFEST_LOCATION, io.getvalue())
         io.close()
 
-    def _write_metadata(self, zip_file=None):
-
-        if zip_file is None:
-            zip_file = self._zip
+    def _write_metadata(self):
 
         # create new Element object for RDF
         rdf = ElementTree.Element(utils.extend_tag_name(metadata.Namespace.rdf_terms.rdf, _XML_NS))
@@ -193,7 +194,6 @@ class CombineArchive(metadata.MetaDataHolder):
         io = StringIO()
         ElementTree.ElementTree(rdf).write(io, xml_declaration=True)
         self.add_entry(io.getvalue(), _XML_CONTENT_METADATA_TYPE, location=self.METADATA_LOCATION, replace=True)
-        #zip_file.writestr(self.METADATA_LOCATION, xmlstring)
         io.close()
 
     def close(self):
@@ -203,9 +203,10 @@ class CombineArchive(metadata.MetaDataHolder):
         """
         self._zip.close()
 
-    def pack(self):
+    def repack(self):
         """
-        writes any change of manifest or metadate into the COMBINE archive
+        rewrites the COMBINE archive with all changes and metadata into a temp file and then attemps
+        to replace to original archive. Works only with archive, which really exist on the filesystem (no StringIO)
         """
         try:
             new_file = tempfile.NamedTemporaryFile(
@@ -216,7 +217,7 @@ class CombineArchive(metadata.MetaDataHolder):
         new_zip = zipfile.ZipFile(new_file, mode='a')
 
         # add main entries
-        self._write_metadata(zip_file=new_zip)  # write metadata first, so the ArchiveEntry is updated
+        self._write_metadata()  # write metadata first, so the ArchiveEntry is updated
         self._write_manifest(zip_file=new_zip)
 
         # add all entries
@@ -237,12 +238,19 @@ class CombineArchive(metadata.MetaDataHolder):
 
         # remove old file and move new one
         os.remove(self._archive)
-        #print ''.join(('new file name: ', new_file.name))
-        #print ''.join(('archive name:  ', self._archive))
         shutil.move(new_file.name, self._archive)
 
         # open new zip file
         self._zip = zipfile.ZipFile(self._archive, mode='a')
+
+    def pack(self):
+        """
+        writes any change of manifest or metadate into the COMBINE archive
+        """
+
+        # add main entries
+        self._write_metadata()  # write metadata first, so the ArchiveEntry is updated
+        self._write_manifest()
 
     def add_entry(self, file, format, location=None, master=False, replace=False):
         """
@@ -290,6 +298,7 @@ class CombineArchive(metadata.MetaDataHolder):
         """
         location = utils.clean_pathname(location)
         if self.entries[location]:
+            self._zip.remove(location)
             del self.entries[location]
         else:
             raise KeyError('Did not found {loc} in COMBINE archive'.format(loc=location))
