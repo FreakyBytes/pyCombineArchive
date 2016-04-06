@@ -489,6 +489,8 @@ class _ZipDecrypter:
 
     def _crc32(self, ch, crc):
         """Compute the CRC32 primitive on one byte."""
+        if not isinstance(ch, int):
+            ch = ord(ch)
         return ((crc >> 8) & 0xffffff) ^ self.crctable[(crc ^ ch) & 0xff]
 
     def __init__(self, pwd):
@@ -509,6 +511,7 @@ class _ZipDecrypter:
         assert isinstance(c, int)
         k = self.key2 | 2
         c = c ^ (((k * (k^1)) >> 8) & 255)
+        c = chr(c)
         self._UpdateKeys(c)
         return c
 
