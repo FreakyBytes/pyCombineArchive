@@ -1515,7 +1515,10 @@ class PyZipFile(ZipFile):
             if self.debug:
                 print(u"Compiling", file)
             try:
-                py_compile.compile(file, doraise=True, optimize=optimize)
+                if sys.version_info[0] >= 3 and sys.version_info[1] >= 2:
+                    py_compile.compile(file, doraise=True, optimize=optimize)
+                else:
+                    py_compile.compile(file, doraise=True)
             except py_compile.PyCompileError as error:
                 print(error.msg)
                 return False
