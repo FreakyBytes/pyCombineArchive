@@ -466,7 +466,7 @@ class _ZipDecrypter:
         plain_text = map(zd, cypher_text)
     """
 
-    @staticmethod
+
     def _GenerateCRCTable():
         """Generate a CRC-32 table.
 
