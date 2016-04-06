@@ -11,7 +11,7 @@ runs all unit tests and generates a code coverage report.
 Please note, that the unit tests of this library are using test CombineArchives from the [SEMS CombineArchive library](https://sems.uni-rostock.de/trac/combinearchive) for Java
 
 ```
-coverage run --source=. -m unittest discover -s tests/ -p "*.py"
+coverage run --source=. -m unittest discover -s tests/ -p "test_*.py"
 coverage report
 ```
 
