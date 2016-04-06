@@ -411,10 +411,13 @@ class ZipInfo (object):
         return header + filename + extra
 
     def _encodeFilenameFlags(self):
-        try:
-            return self.filename.encode('ascii'), self.flag_bits
-        except UnicodeEncodeError:
-            return self.filename.encode('utf-8'), self.flag_bits | 0x800
+        if sys.version_info[0] >= 3 or isinstance(self.filename, unicode):
+            try:
+                return self.filename.encode('ascii'), self.flag_bits
+            except UnicodeEncodeError:
+                return self.filename.encode('utf-8'), self.flag_bits | 0x800
+        else:
+            return self.filename, self.flag_bits
 
     def _decodeExtra(self):
         # Try to decode the extra field.
@@ -1206,7 +1209,7 @@ class ZipFile(object):
         it is encoded as UTF-8 first.
         'zinfo_or_arcname' is either a ZipInfo instance or
         the name of the file in the archive."""
-        if isinstance(data, str):
+        if isinstance(data, str) and sys.version_info[0] >= 3:
             data = data.encode("utf-8")
         if not isinstance(zinfo_or_arcname, ZipInfo):
             zinfo = ZipInfo(filename=zinfo_or_arcname,
