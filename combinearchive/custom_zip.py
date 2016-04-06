@@ -4,6 +4,7 @@ Read and write ZIP files.
 modified version of the original Python 2.7 zipfile module
 Copyright (c) 2001-2016 Python Software Foundation; All Rights Reserved
 """
+from __future__ import print_function
 # 1. This LICENSE AGREEMENT is between the Python Software Foundation ("PSF"), and
 #    the Individual or Organization ("Licensee") accessing and otherwise using Python
 #    2.7.11 software in source or binary form and its associated documentation.
@@ -62,7 +63,6 @@ import shutil
 import struct
 import binascii
 
-
 try:
     import zlib # We may need its compression method
     crc32 = zlib.crc32
@@ -72,6 +72,7 @@ except ImportError:
 
 __all__ = ["BadZipFile", "BadZipfile", "error", "ZIP_STORED", "ZIP_DEFLATED",
            "is_zipfile", "ZipInfo", "ZipFile", "PyZipFile", "LargeZipFile"]
+
 
 class BadZipFile(Exception):
     pass
@@ -465,6 +466,7 @@ class _ZipDecrypter:
         plain_text = map(zd, cypher_text)
     """
 
+    @staticmethod
     def _GenerateCRCTable():
         """Generate a CRC-32 table.
 
@@ -705,10 +707,10 @@ class ZipExtFile(io.BufferedIOBase):
             if self._close_fileobj:
                 self._fileobj.close()
         finally:
-            super().close()
+            super(ZipExtFile, self).close()
 
 
-class ZipFile:
+class ZipFile(object):
     """ Class with methods to open, read, write, remove, close, list zip files.
 
     z = ZipFile(file, mode="r", compression=ZIP_STORED, allowZip64=False)
@@ -1509,7 +1511,7 @@ class PyZipFile(ZipFile):
             try:
                 py_compile.compile(file, doraise=True, optimize=optimize)
             except py_compile.PyCompileError as error:
-                print(err.msg)
+                print(error.msg)
                 return False
             return True
 
