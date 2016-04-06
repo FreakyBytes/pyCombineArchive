@@ -838,7 +838,7 @@ class ZipFile(object):
 
         if self.debug > 2:
             inferred = concat + offset_cd
-            print("given, inferred, offset", offset_cd, inferred, concat)
+            print(u"given, inferred, offset", offset_cd, inferred, concat)
         # self.start_dir:  Position of start of central directory
         self.start_dir = offset_cd + concat
         fp.seek(self.start_dir, 0)
@@ -885,7 +885,7 @@ class ZipFile(object):
                      + centdir[_CD_COMMENT_LENGTH])
 
             if self.debug > 2:
-                print("total", total)
+                print(u"total", total)
 
 
     def namelist(self):
@@ -902,11 +902,11 @@ class ZipFile(object):
 
     def printdir(self, file=None):
         """Print a table of contents for the zip file."""
-        print("%-46s %19s %12s" % ("File Name", "Modified    ", "Size"),
+        print(u"%-46s %19s %12s" % (u"File Name", u"Modified    ", u"Size"),
               file=file)
         for zinfo in self.filelist:
-            date = "%d-%02d-%02d %02d:%02d:%02d" % zinfo.date_time[:6]
-            print("%-46s %s %12d" % (zinfo.filename, date, zinfo.file_size),
+            date = u"%d-%02d-%02d %02d:%02d:%02d" % zinfo.date_time[:6]
+            print(u"%-46s %s %12d" % (zinfo.filename, date, zinfo.file_size),
                   file=file)
 
     def testzip(self):
@@ -1100,7 +1100,7 @@ class ZipFile(object):
         """Check for errors before writing a file to the archive."""
         if zinfo.filename in self.NameToInfo:
             if self.debug:      # Warning for duplicate names
-                print("Duplicate name:", zinfo.filename)
+                print(u"Duplicate name:", zinfo.filename)
         if self.mode not in ("w", "a"):
             raise RuntimeError('write() requires mode "w" or "a"')
         if not self.fp:
@@ -1457,10 +1457,10 @@ class PyZipFile(ZipFile):
                 else:
                     basename = name
                 if self.debug:
-                    print("Adding package in", pathname, "as", basename)
+                    print(u"Adding package in", pathname, "as", basename)
                 fname, arcname = self._get_codename(initname[0:-3], basename)
                 if self.debug:
-                    print("Adding", arcname)
+                    print(u"Adding", arcname)
                 self.write(fname, arcname)
                 dirlist = os.listdir(pathname)
                 dirlist.remove("__init__.py")
@@ -1476,7 +1476,7 @@ class PyZipFile(ZipFile):
                         fname, arcname = self._get_codename(path[0:-3],
                                          basename)
                         if self.debug:
-                            print("Adding", arcname)
+                            print(u"Adding", arcname)
                         self.write(fname, arcname)
             else:
                 # This is NOT a package directory, add its files at top level
@@ -1489,7 +1489,7 @@ class PyZipFile(ZipFile):
                         fname, arcname = self._get_codename(path[0:-3],
                                          basename)
                         if self.debug:
-                            print("Adding", arcname)
+                            print(u"Adding", arcname)
                         self.write(fname, arcname)
         else:
             if pathname[-3:] != ".py":
@@ -1497,7 +1497,7 @@ class PyZipFile(ZipFile):
                       'Files added with writepy() must end with ".py"')
             fname, arcname = self._get_codename(pathname[0:-3], basename)
             if self.debug:
-                print("Adding file", arcname)
+                print(u"Adding file", arcname)
             self.write(fname, arcname)
 
     def _get_codename(self, pathname, basename):
@@ -1510,7 +1510,7 @@ class PyZipFile(ZipFile):
         def _compile(file, optimize=-1):
             import py_compile
             if self.debug:
-                print("Compiling", file)
+                print(u"Compiling", file)
             try:
                 py_compile.compile(file, doraise=True, optimize=optimize)
             except py_compile.PyCompileError as error:
@@ -1601,8 +1601,8 @@ def main(args = None):
         zf = ZipFile(args[1], 'r')
         badfile = zf.testzip()
         if badfile:
-            print("The following enclosed file is corrupted: {!r}".format(badfile))
-        print("Done testing")
+            print(u"The following enclosed file is corrupted: {!r}".format(badfile))
+        print(u"Done testing")
 
     elif args[0] == '-e':
         if len(args) != 3:

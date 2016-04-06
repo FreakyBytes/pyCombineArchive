@@ -507,7 +507,7 @@ class TestZip64InSmallFiles(unittest.TestCase):
 
     def setUp(self):
 
-        line_gen = (bytes("Test of zipfile line %d." % i, "ascii")
+        line_gen = (bytes("Test of zipfile line %d." % i).encode("ascii")
                     for i in range(0, FIXEDTEST_SIZE))
         self.data = b'\n'.join(line_gen)
 
