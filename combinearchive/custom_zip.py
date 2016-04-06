@@ -489,7 +489,7 @@ class _ZipDecrypter:
 
     def _crc32(self, ch, crc):
         """Compute the CRC32 primitive on one byte."""
-        if not isinstance(ch, int):
+        if isinstance(ch, (str, unicode)):
             ch = ord(ch)
         return ((crc >> 8) & 0xffffff) ^ self.crctable[(crc ^ ch) & 0xff]
 
@@ -508,10 +508,10 @@ class _ZipDecrypter:
 
     def __call__(self, c):
         """Decrypt a single character."""
-        assert isinstance(c, int)
+        if isinstance(c, (str, unicode)):
+            c = ord(c)
         k = self.key2 | 2
         c = c ^ (((k * (k^1)) >> 8) & 255)
-        c = chr(c)
         self._UpdateKeys(c)
         return c
 
@@ -673,7 +673,7 @@ class ZipExtFile(io.BufferedIOBase):
             self._compress_left -= len(data)
 
             if data and self._decrypter is not None:
-                data = bytes(map(self._decrypter, data))
+                data = ''.join(chr(i) for i in map(self._decrypter, data))
 
             if self._compress_type == ZIP_STORED:
                 self._update_crc(data, eof=(self._compress_left==0))
@@ -1527,7 +1527,7 @@ class PyZipFile(ZipFile):
         else:
             pycache_pyc = file_pyc
             pycache_pyo = file_pyo
-            
+
         if self._optimize == -1:
             # legacy mode: use whatever file is present
             if (os.path.isfile(file_pyo) and
