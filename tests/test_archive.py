@@ -5,6 +5,8 @@ no metadata tests involved
 import shutil
 import os
 import tempfile
+from StringIO import StringIO
+import hashlib
 import unittest
 from test import test_support
 
@@ -57,6 +59,24 @@ class BaseReadTest(unittest.TestCase):
         return ''.join(["{}: pyCombineArchive Test file\n".format(x) for x in range(150)])
 
 
+class InMemoryBaseTest(BaseReadTest):
+
+    def open_archive(self):
+        with open(self.archive_location, 'r') as fp:
+            data = fp.read()
+
+        self._buffer = StringIO(data)
+        self.carchive = combinearchive.CombineArchive(self._buffer)
+
+    def close_archive(self):
+        super(InMemoryBaseTest, self).close_archive()
+        self._buffer.close()
+
+    def reopen_archive(self):
+        self.carchive.close()
+        self.carchive = combinearchive.CombineArchive(self._buffer)
+
+
 class ReadTest(BaseReadTest):
     TEST_ARCHIVE = 'tests/data/all-singing-all-dancing.omex'
 
@@ -78,6 +98,17 @@ class ReadTest(BaseReadTest):
         filter_result = self.carchive.filter_format(test_format, regex=False)
         for entry in filter_result:
             self.assertEqual(entry.format, test_format, 'filter_format mismatched {}'.format(entry.format))
+
+        self.close_archive()
+
+    def test_read_file(self):
+        self.open_archive()
+
+        entry = self.carchive.get_entry('/model/BIOMD0000000144.xml')
+        hash = hashlib.md5()
+        hash.update(entry.read())
+        self.assertEqual(hash.hexdigest(), 'db0f5b0aed769704d0e4365dc9da92cf',
+            'MD5 of /model/BIOMD0000000144.xml is not valid. Maybe a read error')
 
         self.close_archive()
 
@@ -183,6 +214,53 @@ class BadArchiveTest(unittest.TestCase):
             combinearchive.CombineArchive('tests/data/paper-repressilator-mod-meta-2.omex')
 
 
+class InMemoryReadTest(InMemoryBaseTest):
+    TEST_ARCHIVE = 'tests/data/all-singing-all-dancing.omex'
+
+    def test_open_in_memory(self):
+        self.open_archive()
+        self.close_archive()
+
+    def test_read_file(self):
+        self.open_archive()
+
+        entry = self.carchive.get_entry('/model/BIOMD0000000144.xml')
+        hash = hashlib.md5()
+        hash.update(entry.read())
+        self.assertEqual(hash.hexdigest(), 'db0f5b0aed769704d0e4365dc9da92cf',
+            'MD5 of /model/BIOMD0000000144.xml is not valid. Maybe a read error')
+
+        self.close_archive()
+
+
+class InMemoryAddReadTest(InMemoryBaseTest):
+    TEST_ARCHIVE = None
+
+    def test_file_add_read(self):
+        self.open_archive()
+        test_filenames = ("a/test.txt", "b/test.txt", u"unicode_file_name.txt")
+        content_map = dict()
+
+        for name in test_filenames:
+            content_map[name] = self.get_random_content()
+            self.carchive.add_entry(content_map[name], "text/plain", name)
+
+        # check if files are written
+        for name in test_filenames:
+            entry = self.carchive.get_entry(name)
+            self.assertEqual(entry.read(), content_map[name])
+
+        self.carchive.pack()
+        self.reopen_archive()
+
+        # check if files are written after pack'n'close
+        for name in test_filenames:
+            entry = self.carchive.get_entry(name)
+            self.assertEqual(entry.read(), content_map[name])
+
+        self.close_archive()
+
+
 class FormatConversionTest(unittest.TestCase):
 
     def test_formatcheck(self):
@@ -220,6 +298,10 @@ def do_tests():
     """
     test_support.run_unittest(ReadTest,
                               AddDeleteTest,
+                              AddReadTest,
+                              BadArchiveTest,
+                              InMemoryReadTest,
+                              ReadTest,
                               FormatConversionTest)
 
 if __name__ == '__main__':
