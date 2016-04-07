@@ -1548,6 +1548,25 @@ class RemoveTests(unittest.TestCase):
                 zf.writestr(fname, "just add a file with a name and some data")
                 zf.remove(fname)
 
+    def test_delete_add(self):
+        data_list = [''.join([chr(randint(0, 255)) for i in range(100)]) for i in range(3)]
+        fname_list = ["foo.txt", "bar.txt", "blubb.bla"]
+
+        # add some files to the zip
+        with zipfile.ZipFile(TESTFN, "w") as zf:
+            for fname, data in zip(fname_list, data_list):
+                zf.writestr(fname, data)
+
+        # remove the middle file and add it again
+        with zipfile.ZipFile(TESTFN, "a") as zf:
+            zf.remove(fname_list[1])
+            zf.writestr(fname_list[1], data_list[1])
+
+        # try to access prior deleted/added file and prior last file (which got moved, while delete)
+        with zipfile.ZipFile(TESTFN, "a") as zf:
+            self.assertEqual(zf.read(fname_list[1]), data_list[1])
+            self.assertEqual(zf.read(fname_list[2]), data_list[2])
+
     def tearDown(self):
         unlink(TESTFN)
 
