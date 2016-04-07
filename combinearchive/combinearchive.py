@@ -252,9 +252,14 @@ class CombineArchive(metadata.MetaDataHolder):
         self._write_metadata()  # write metadata first, so the ArchiveEntry is updated
         self._write_manifest()
 
+        # close and reopen zipfile, so the zip dictionary gots written
+        self._zip.close()
+        self._zip = zipfile.ZipFile(self._archive, mode='a')
+
     def add_entry(self, file, format, location=None, master=False, replace=False):
         """
-        adds a file to the COMBINE archive and adds a manifest entry
+        adds a file-like object to the COMBINE archive and adds a manifest entry
+        if file is an instance of unicode or str, the content of this variable is written as content
 
         Returns:
             ArchiveEntry
@@ -287,7 +292,7 @@ class CombineArchive(metadata.MetaDataHolder):
         else:
             zipinfo = self._zip.write(file, location)
 
-        entry = ArchiveEntry(location, format=format, master=master, zipinfo=zipinfo)
+        entry = ArchiveEntry(location, format=format, master=master, zipinfo=zipinfo, archive=self)
         self.entries[entry.location] = entry
         return entry
 

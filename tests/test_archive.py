@@ -43,14 +43,18 @@ class BaseReadTest(unittest.TestCase):
         if hasattr(self, 'carchive') and self.carchive is not None:
             self.carchive.close()
 
-    def get_random_file(self):
-        file = tempfile.NamedTemporaryFile(delete=False)
-        file.write("pyCombineArchive Test file")
-        name = file.name
-        self._temp_files.append(name)
-        file.close()
+    def get_random_filename(self):
+        with tempfile.NamedTemporaryFile(delete=False) as fp:
+            for x in range(300):
+                fp.write("{}: pyCombineArchive Test file\n".format(x))
+
+            name = fp.name
+            self._temp_files.append(name)
 
         return name
+
+    def get_random_content(self):
+        return ''.join(["{}: pyCombineArchive Test file\n".format(x) for x in range(150)])
 
 
 class ReadTest(BaseReadTest):
@@ -79,13 +83,13 @@ class ReadTest(BaseReadTest):
 
 
 class AddDeleteTest(BaseReadTest):
-    TEST_ARCHIVE = None #'tests/data/all-singing-all-dancing.omex'
+    TEST_ARCHIVE = 'tests/data/all-singing-all-dancing.omex'
 
     def test_add_delete(self):
         self.open_archive()
         test_file_name = "test/1.txt"
 
-        entry = self.carchive.add_entry(self.get_random_file(), "text/plain", test_file_name, master=True)
+        entry = self.carchive.add_entry(self.get_random_filename(), "text/plain", test_file_name, master=True)
         self.assertIsNotNone(entry, 'created entry is None')
 
         meta = metadata.OmexMetaDataObject()
@@ -119,6 +123,35 @@ class AddDeleteTest(BaseReadTest):
         self.carchive.remove_entry(test_file_name)
 
         self.carchive.pack()
+        self.close_archive()
+
+
+class AddReadTest(BaseReadTest):
+    TEST_ARCHIVE = None
+
+    def test_file_add_read(self):
+        self.open_archive()
+        test_filenames = ("a/test.txt", "b/test.txt", u"unicode_file_name.txt")
+        content_map = dict()
+
+        for name in test_filenames:
+            content_map[name] = self.get_random_content()
+            self.carchive.add_entry(content_map[name], "text/plain", name)
+
+        # check if files are written
+        for name in test_filenames:
+            entry = self.carchive.get_entry(name)
+            self.assertEqual(entry.read(), content_map[name])
+
+        self.carchive.pack()
+        self.carchive.close()
+        self.carchive = combinearchive.CombineArchive(self.archive_location)
+
+        # check if files are written after pack'n'close
+        for name in test_filenames:
+            entry = self.carchive.get_entry(name)
+            self.assertEqual(entry.read(), content_map[name])
+
         self.close_archive()
 
 
