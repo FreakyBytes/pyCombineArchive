@@ -47,8 +47,8 @@ This library is licensed under the BSD-3-Clause
 	OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-This library also includes a modified version of the Python zipfile module, which was released under the PSF LICENSE AGREEMENT.
-This modul is shipped as ```custom_zip.py```
+This library also includes a modified version of the Python zipfile module and corresponding unittests, which was released under the PSF LICENSE AGREEMENT.
+This modul is shipped as ```custom_zip.py``` and ```test_zipfile.py``` as well as ```custom_support.py```
 
 	1. This LICENSE AGREEMENT is between the Python Software Foundation ("PSF"), and
 	   the Individual or Organization ("Licensee") accessing and otherwise using Python
