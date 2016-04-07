@@ -1241,11 +1241,12 @@ class ZipFile(object):
         zinfo.header_offset = self.fp.tell()    # Start of header data
         self.fp.write(zinfo.FileHeader())
         self.fp.write(data)
-        self.fp.flush()
         if zinfo.flag_bits & _FHF_HAS_DATA_DESCRIPTOR:
             # Write CRC and file sizes after the file data
             self.fp.write(struct.pack("<LLL", zinfo.CRC, zinfo.compress_size,
                   zinfo.file_size))
+        self.fp.flush()
+
         self.filelist.append(zinfo)
         self.NameToInfo[zinfo.filename] = zinfo
 
@@ -1295,17 +1296,17 @@ class ZipFile(object):
         zlen = len(zinfo.FileHeader()) + zinfo.compress_size + self._get_data_descriptor_size(zinfo)
 
         # Modify all the relevant file pointers
-        for info in self.infolist():
+        for info in self.filelist:
             if info.header_offset > fileofs:
                 info.header_offset = info.header_offset - zlen
 
         # Remove the zipped data
         self.fp.seek(fileofs + zlen)
         data_after = self.fp.read()
-        self.fp.seek(fileofs)
+        self.fp.seek(fileofs, 0)
         self.fp.write(data_after)
         new_start_dir = self.start_dir - zlen
-        self.fp.seek(new_start_dir)
+        self.fp.seek(new_start_dir, 0)
         self.fp.truncate()
 
         # Fix class members with state
@@ -1313,6 +1314,7 @@ class ZipFile(object):
         self._didModify = True
         self.filelist.remove(zinfo)
         del self.NameToInfo[fname]
+        print('')
 
     def __del__(self):
         """Call the "close()" method in case the user forgot."""
@@ -1423,6 +1425,7 @@ class ZipFile(object):
             self.fp.write(endrec)
             self.fp.write(self.comment)
             self.fp.flush()
+            self.fp.truncate()
 
         if not self._filePassed:
             self.fp.close()

@@ -1569,7 +1569,7 @@ class RemoveTests(unittest.TestCase):
                     self.assertEqual(zf.read(fname), data)
 
     def test_delete_add_no_close(self):
-        fname_list = ["foo.txt", "bar.txt", "blubb.bla", "sup.bro", "rock'n'roll"]
+        fname_list = ["foo.txt", "bar.txt", "blu.bla", "sup.bro", "rollah"]
         data_list = [''.join([chr(randint(0, 255)) for i in range(100)]) for i in range(len(fname_list))]
 
         # add some files to the zip
