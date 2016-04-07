@@ -1281,6 +1281,7 @@ class ZipFile(object):
         if not self.fp:
             raise RuntimeError(
                   "Attempt to modify ZIP archive that was already closed")
+        fp = self.fp
 
         # Make sure we have an info object
         if isinstance(member, ZipInfo):
@@ -1290,31 +1291,69 @@ class ZipFile(object):
             # Get info object for member
             zinfo = self.getinfo(member)
 
-        # To remove the member we need its size and location in the archive
-        fname = zinfo.filename
-        fileofs = zinfo.header_offset
-        zlen = len(zinfo.FileHeader()) + zinfo.compress_size + self._get_data_descriptor_size(zinfo)
-
-        # Modify all the relevant file pointers
+        # start at the pos of the first member (smallest offset)
+        position = min([info.header_offset for info in self.filelist])  # start at the beginning of first file
         for info in self.filelist:
-            if info.header_offset > fileofs:
-                info.header_offset = info.header_offset - zlen
+            fileheader = info.FileHeader()
+            # is member after delete one?
+            if info.header_offset > zinfo.header_offset and info != zinfo:
+                # rewrite FileHeader and copy compressed data
+                # Skip the file header:
+                fp.seek(info.header_offset)
+                fheader = fp.read(sizeFileHeader)
+                if fheader[0:4] != stringFileHeader:
+                    raise BadZipFile("Bad magic number for file header")
 
-        # Remove the zipped data
-        self.fp.seek(fileofs + zlen)
-        data_after = self.fp.read()
-        self.fp.seek(fileofs, 0)
-        self.fp.write(data_after)
-        new_start_dir = self.start_dir - zlen
-        self.fp.seek(new_start_dir, 0)
-        self.fp.truncate()
+                fheader = struct.unpack(structFileHeader, fheader)
+                fname = fp.read(fheader[_FH_FILENAME_LENGTH])
+                if fheader[_FH_EXTRA_FIELD_LENGTH]:
+                    fp.read(fheader[_FH_EXTRA_FIELD_LENGTH])
+
+                if zinfo.flag_bits & 0x800:
+                    # UTF-8 filename
+                    fname_str = fname.decode("utf-8")
+                else:
+                    fname_str = fname.decode("cp437")
+
+                if fname_str != info.orig_filename:
+                    if not self._filePassed:
+                        fp.close()
+                    raise BadZipFile(
+                          'File name in directory %r and header %r differ.'
+                          % (zinfo.orig_filename, fname))
+
+                # read the actual data
+                data = fp.read(fheader[_FH_COMPRESSED_SIZE])
+
+                # modify info obj
+                info.header_offset = position
+                # jump to new position
+                fp.seek(info.header_offset, 0)
+                # write fileheader and data
+                fp.write(fileheader)
+                fp.write(data)
+                if zinfo.flag_bits & _FHF_HAS_DATA_DESCRIPTOR:
+                    # Write CRC and file sizes after the file data
+                    fp.write(struct.pack("<LLL", info.CRC, info.compress_size,
+                            info.file_size))
+                # update position
+                fp.flush()
+                position = fp.tell()
+
+            elif info != zinfo:
+                # move to next position
+                position = position + info.compress_size + len(fileheader) + self._get_data_descriptor_size(info)
 
         # Fix class members with state
-        self.start_dir = new_start_dir
+        self.start_dir = position
         self._didModify = True
         self.filelist.remove(zinfo)
-        del self.NameToInfo[fname]
-        print('')
+        del self.NameToInfo[zinfo.filename]
+
+        # write new central directory (includes truncate)
+        fp.seek(position, 0)
+        self._write_central_dir()
+        fp.seek(self.start_dir, 0)  # jump to the beginning of the central directory, so it gets overridden at close()
 
     def __del__(self):
         """Call the "close()" method in case the user forgot."""
@@ -1376,13 +1415,11 @@ class ZipFile(object):
 
         return centdir + filename + extra_data + zinfo.comment
 
-    def close(self):
-        """Close the file, and for mode "w" and "a" write the ending
-        records."""
+    def _write_central_dir(self):
         if self.fp is None:
             return
 
-        if self.mode in ("w", "a") and self._didModify: # write ending records
+        if self.mode in ("w", "a"): # write ending records
             count = 0
             pos1 = self.fp.tell()
             for zinfo in self.filelist:         # write central directory
@@ -1426,6 +1463,16 @@ class ZipFile(object):
             self.fp.write(self.comment)
             self.fp.flush()
             self.fp.truncate()
+
+
+    def close(self):
+        """Close the file, and for mode "w" and "a" write the ending
+        records."""
+        if self.fp is None:
+            return
+
+        if self.mode in ("w", "a") and self._didModify: # write ending records
+            self._write_central_dir()
 
         if not self._filePassed:
             self.fp.close()
