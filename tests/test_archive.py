@@ -260,6 +260,30 @@ class InMemoryAddReadTest(InMemoryBaseTest):
 
         self.close_archive()
 
+    def test_file_add_read_repack(self):
+        self.open_archive()
+        test_filenames = ("a/test.txt", "b/test.txt", u"unicode_file_name.txt")
+        content_map = dict()
+
+        for name in test_filenames:
+            content_map[name] = self.get_random_content()
+            self.carchive.add_entry(content_map[name], "text/plain", name)
+
+        # check if files are written
+        for name in test_filenames:
+            entry = self.carchive.get_entry(name)
+            self.assertEqual(entry.read(), content_map[name])
+
+        self.carchive.repack(output_file=StringIO())
+        self._buffer = self.carchive._archive  # keep track of the buffer for this test
+
+        # check if files are written after pack'n'close
+        for name in test_filenames:
+            entry = self.carchive.get_entry(name)
+            self.assertEqual(entry.read(), content_map[name])
+
+        self.close_archive()
+
 
 class FormatConversionTest(unittest.TestCase):
 

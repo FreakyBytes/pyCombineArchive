@@ -203,16 +203,19 @@ class CombineArchive(metadata.MetaDataHolder):
         """
         self._zip.close()
 
-    def repack(self):
+    def repack(self, output_file=None):
         """
         rewrites the COMBINE archive with all changes and metadata into a temp file and then attemps
         to replace to original archive. Works only with archive, which really exist on the filesystem (no StringIO)
         """
-        try:
-            new_file = tempfile.NamedTemporaryFile(
-                dir=os.path.dirname(self._archive), delete=False )
-        except:
-            new_file = tempfile.NamedTemporaryFile(delete=False)
+        if output_file is None:
+            try:
+                new_file = tempfile.NamedTemporaryFile(
+                    dir=os.path.dirname(self._archive), delete=False )
+            except:
+                new_file = tempfile.NamedTemporaryFile(delete=False)
+        else:
+            new_file = output_file
 
         new_zip = zipfile.ZipFile(new_file, mode='a')
 
@@ -236,9 +239,15 @@ class CombineArchive(metadata.MetaDataHolder):
         new_zip.close()
         self._zip.close()
 
-        # remove old file and move new one
-        os.remove(self._archive)
-        shutil.move(new_file.name, self._archive)
+        if output_file is None:
+            # remove old file and move new one
+            os.remove(self._archive)
+            shutil.move(new_file.name, self._archive)
+        else:
+            if not isinstance(self._archive, (str, unicode)):
+                # is a file descriptor
+                self._archive.close()
+            self._archive = new_file
 
         # open new zip file
         self._zip = zipfile.ZipFile(self._archive, mode='a')
