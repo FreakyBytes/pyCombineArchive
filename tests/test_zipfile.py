@@ -1549,23 +1549,45 @@ class RemoveTests(unittest.TestCase):
                 zf.remove(fname)
 
     def test_delete_add(self):
-        data_list = [''.join([chr(randint(0, 255)) for i in range(100)]) for i in range(3)]
-        fname_list = ["foo.txt", "bar.txt", "blubb.bla"]
+        fname_list = ["foo.txt", "bar.txt", "blubb.bla", "sup.bro", "rock'n'roll"]
+        data_list = [''.join([chr(randint(0, 255)) for i in range(100)]) for i in range(len(fname_list))]
 
         # add some files to the zip
         with zipfile.ZipFile(TESTFN, "w") as zf:
             for fname, data in zip(fname_list, data_list):
                 zf.writestr(fname, data)
 
-        # remove the middle file and add it again
-        with zipfile.ZipFile(TESTFN, "a") as zf:
-            zf.remove(fname_list[1])
-            zf.writestr(fname_list[1], data_list[1])
+        for no in range(0, 3):
+            # remove the middle file and add it again
+            with zipfile.ZipFile(TESTFN, "a") as zf:
+                zf.remove(fname_list[no])
+                zf.writestr(fname_list[no], data_list[no])
 
-        # try to access prior deleted/added file and prior last file (which got moved, while delete)
-        with zipfile.ZipFile(TESTFN, "a") as zf:
-            self.assertEqual(zf.read(fname_list[1]), data_list[1])
-            self.assertEqual(zf.read(fname_list[2]), data_list[2])
+            # try to access prior deleted/added file and prior last file (which got moved, while delete)
+            with zipfile.ZipFile(TESTFN, "a") as zf:
+                for fname, data in zip(fname_list, data_list):
+                    self.assertEqual(zf.read(fname), data)
+
+    def test_delete_add_no_close(self):
+        fname_list = ["foo.txt", "bar.txt", "blubb.bla", "sup.bro", "rock'n'roll"]
+        data_list = [''.join([chr(randint(0, 255)) for i in range(100)]) for i in range(len(fname_list))]
+
+        # add some files to the zip
+        with zipfile.ZipFile(TESTFN, "w") as zf:
+            for fname, data in zip(fname_list, data_list):
+                zf.writestr(fname, data)
+
+        for no in range(0, 2):
+            with zipfile.ZipFile(TESTFN, "a") as zf:
+                # remove the middle file and add it again
+                zf.remove(fname_list[no])
+                zf.writestr(fname_list[no], data_list[no])
+                zf.remove(fname_list[no+1])
+                zf.writestr(fname_list[no+1], data_list[no+1])
+
+                # try to access prior deleted/added file and prior last file (which got moved, while delete)
+                for fname, data in zip(fname_list, data_list):
+                    self.assertEqual(zf.read(fname), data)
 
     def tearDown(self):
         unlink(TESTFN)
