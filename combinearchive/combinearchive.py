@@ -181,6 +181,12 @@ class CombineArchive(metadata.MetaDataHolder):
         # create new Element object for RDF
         rdf = ElementTree.Element(utils.extend_tag_name(metadata.Namespace.rdf_terms.rdf, _XML_NS))
 
+        # iterate over archive metadata
+        for description in self.description:
+            desc_elem = description._rebuild_xml()
+            desc_elem.attrib[utils.extend_tag_name(metadata.Namespace.rdf_terms.about, _XML_NS)] = self.ARCHIVE_REFERENCE[0]
+            rdf.append(desc_elem)
+
         # iterate over all metadata for each entry
         for (location, entry) in self.entries.items():
             if not isinstance(entry, metadata.MetaDataHolder):
