@@ -171,12 +171,12 @@ class OmexMetaDataObject(MetaDataObject):
     COMBINE Archive specification
     """
 
-    def __init__(self, xml_element=None):
+    def __init__(self, created=None, creator=list(), modified=list(), description=None, xml_element=None):
 
-        self.created = datetime.now()
-        self.creator = list()
-        self.modified = list()
-        self.description = None
+        self.created = datetime.now() if created is None else created
+        self.creator = creator if isinstance(creator, (list, tuple)) else [creator]
+        self.modified = modified if isinstance(modified, (list, tuple)) else [modified]
+        self.description = description
 
         super(OmexMetaDataObject, self).__init__(xml_element=xml_element)
 
