@@ -14,7 +14,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='pyCombineArchive',
-    version='0.1.3.dev',
+    version='0.1.3.dev1',
     license='BSD 3 Clause',
     description='A pure python library to create, modify and read COMBINE Archives',
     long_description=long_description,

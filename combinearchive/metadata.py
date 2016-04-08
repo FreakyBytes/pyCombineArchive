@@ -21,7 +21,7 @@ class MetaDataHolder(object):
     """
 
     def __init__(self):
-        self.description = list()
+        self.description = []
 
     def add_description(self, meta, fragment=None):
         """
@@ -171,12 +171,24 @@ class OmexMetaDataObject(MetaDataObject):
     COMBINE Archive specification
     """
 
-    def __init__(self, created=None, creator=list(), modified=list(), description=None, xml_element=None):
+    def __init__(self, created=None, creator=None, modified=None, description=None, xml_element=None):
 
         self.created = datetime.now() if created is None else created
-        self.creator = creator if isinstance(creator, (list, tuple)) else [creator]
-        self.modified = modified if isinstance(modified, (list, tuple)) else [modified]
         self.description = description
+
+        if isinstance(creator, (list, tuple)):
+            self.creator = creator
+        elif creator is not None and isinstance(creator, VCard):
+            self.creator = [creator]
+        else:
+            self.creator = []
+
+        if isinstance(modified, (list, tuple)):
+            self.modified = modified
+        elif creator is not None and isinstance(modified, datetime):
+            self.modified = [modified]
+        else:
+            self.modified = []
 
         super(OmexMetaDataObject, self).__init__(xml_element=xml_element)
 
