@@ -343,16 +343,17 @@ class CombineArchive(metadata.MetaDataHolder):
         if not format:
             raise KeyError('You need to provide an format')
 
-        # check format argument against spec
-        try:
-            utils.check_format(format)
-        except exceptions.CombineArchiveFormatException as e:
-            raise KeyError('{format} is no valid format, according to the OMEX specification. {cause}'.format(format=format, cause=e.message))
-
         if regex is True:
             pattern = re.compile(format)
         else:
             pattern = None
+            # check format argument against spec
+            try:
+                utils.check_format(format)
+            except exceptions.CombineArchiveFormatException as e:
+                raise KeyError(
+                    '{format} is no valid format, according to the OMEX specification. {cause}'.format(format=format,
+                                                                                                       cause=e.message))
 
         for (location, entry) in self.entries.items():
             if pattern is not None and pattern.match(entry.format):
