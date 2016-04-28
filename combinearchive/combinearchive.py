@@ -132,9 +132,9 @@ class CombineArchive(metadata.MetaDataHolder):
 
                 # start parsing
                 try:
-                    data = metadata.OmexMetaDataObject(description)
+                    data = metadata.OmexMetaDataObject(xml_element=description)
                 except ValueError as e:
-                    data = metadata.DefaultMetaDataObject(description)
+                    data = metadata.DefaultMetaDataObject(xml_element=description)
 
                 about.add_description(data, fragment=fragment_str)
 
