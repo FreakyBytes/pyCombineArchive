@@ -168,7 +168,7 @@ class CombineArchive(metadata.MetaDataHolder):
 
         # write xml to zip
         io = StringIO()
-        ElementTree.ElementTree(manifest).write(io, xml_declaration=True, default_namespace=_XML_ROOT_NS)
+        ElementTree.ElementTree(manifest).write(io, xml_declaration=True, default_namespace=_XML_ROOT_NS, encoding='utf-8')
         try:
             zip_file.remove(self.MANIFEST_LOCATION)
         except KeyError:
@@ -198,7 +198,7 @@ class CombineArchive(metadata.MetaDataHolder):
 
         # write xml to zip
         io = StringIO()
-        ElementTree.ElementTree(rdf).write(io, xml_declaration=True)
+        ElementTree.ElementTree(rdf).write(io, xml_declaration=True, encoding='utf-8')
         self.add_entry(io.getvalue(), _XML_CONTENT_METADATA_TYPE, location=self.METADATA_LOCATION, replace=True)
         io.close()
 
