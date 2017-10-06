@@ -108,3 +108,28 @@ def check_format(format, convert=True):
     # everything seems to be alright
     # return format
     return format
+
+def indent(elem, level=0):
+    """
+    In-place pretty print for xml.
+
+    This function performs indentation on xml so that it is more readable.
+    Code was obtained from:
+    http://effbot.org/zone/element-lib.htm#prettyprint
+
+    Returns:
+        None
+    """
+    i = "\n" + level*"  "
+    if len(elem):
+        if not elem.text or not elem.text.strip():
+            elem.text = i + "  "
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+        for elem in elem:
+            indent(elem, level+1)
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+    else:
+        if level and (not elem.tail or not elem.tail.strip()):
+            elem.tail = i
