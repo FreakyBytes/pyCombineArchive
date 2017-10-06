@@ -166,9 +166,12 @@ class CombineArchive(metadata.MetaDataHolder):
             if entry.master:
                 content.attrib[utils.extend_tag_name(_XML_CONTENT_MASTER, _XML_NS)] = 'true'
 
+        # prettify xml
+        utils.indent(manifest)
+
         # write xml to zip
         io = StringIO()
-        ElementTree.ElementTree(manifest).write(io, xml_declaration=True, default_namespace=_XML_ROOT_NS)
+        ElementTree.ElementTree(manifest).write(io, xml_declaration=True, default_namespace=_XML_ROOT_NS, encoding='utf-8')
         try:
             zip_file.remove(self.MANIFEST_LOCATION)
         except KeyError:
@@ -196,9 +199,12 @@ class CombineArchive(metadata.MetaDataHolder):
                 desc_elem.attrib[utils.extend_tag_name(metadata.Namespace.rdf_terms.about, _XML_NS)] = location
                 rdf.append(desc_elem)
 
+        # prettify xml
+        utils.indent(rdf)
+
         # write xml to zip
         io = StringIO()
-        ElementTree.ElementTree(rdf).write(io, xml_declaration=True)
+        ElementTree.ElementTree(rdf).write(io, xml_declaration=True, encoding='utf-8')
         self.add_entry(io.getvalue(), _XML_CONTENT_METADATA_TYPE, location=self.METADATA_LOCATION, replace=True)
         io.close()
 
