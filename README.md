@@ -7,12 +7,12 @@ Project Status
 
 Currently the development of this project is stalled, due to me not working in this field anymore.
 This library was initially developed to implement support for COMBINE Archives in [JWS Online](http://jjj.biochem.sun.ac.za/).
-For this purpose it is feature complete, implementing base create, read, update operations for both files within a COMBINE Archive
+For this purpose it is feature complete, implementing basic create, read, update operations for both files within a COMBINE Archive
 and their respective meta data encoded in the OMEX format.
 
 If you wish to continue development and maintainance, please contact me.
 You may also want to take a look into the [mailing list discussion](https://groups.google.com/forum/#!topic/combine-archive/oRQCoZfUblY),
-for alternatives to this library. 
+for alternatives to this library.
 
 Running Tests
 -------------
